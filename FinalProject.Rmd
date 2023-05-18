@@ -1,0 +1,341 @@
+---
+title: "STA 141A Final Project: Predictive Model of Mice Neural Activity"
+author: "Nathaniel Faxon"
+date: "2023-04-18"
+output: html_document
+abstract: |
+  Put the abstract here
+---
+
+1st Task: Understanding Data
+
+1)  Abstract -\> What you did in the project (3-4 sentences)
+
+## Introduction
+
+2)  Introduction
+
+-   Questions of interest along with real-world motivation
+
+    -   In the original study, the neural activity of 30,000 neurons in 42 brain regions of mice were analyzed. There were 10 mice analyzed over 39 different sessions. Within each session, visual stimuli were presented to the mice at random, then the reaction of the mice to this stimuli were recorded.
+    -   In this project, we will be analyzing the different trials and recorded neuron spikes in order to make a predictive model.
+
+-   Impact of results
+
+-   Basic information of data (source, key variables, hypotheses), method, and why.
+
+    -   The data comes from 18 different session of 4 different mice brain neural activity. The four mice that we are studying the neural responses of are Cori, Forssmann, Hench, and Lederberg. More specifically, the first three sessions analyzed Cori, the next four Forssmann, the next four Hench, and the last seven Lederberg. These sessions were taken between 12/14/2016 through 12/11/2017.
+
+    -   Within each session, there were many trials where the activity of the neurons in the mice's visual cortex was recorded based on their decision making when faced with visual stimuli. Their decision making consists of turning the wheel either to the left or right or holding it still. Different variables were recorded for the 4 different mice. 8 variables are recorded each session:
+
+        -   brain_area: The area of the brain where each neuron lives.
+        -   contrast_left: Contrast on the left stimulus. Can take values 0, 0.25, 0.5, 1 (0 indicating the absence of a stimulus).
+        -   contrast_right: Contrast on the right stimulus. Can take values 0, 0.25, 0.5, 1 (0 indicating the absence of a stimulus).
+        -   date_exp: Date of the experiment on the mouse.
+        -   feedback_type: The type of feedback that was administered base on the outcome of the mouse's decision. There are four different cases that can happen:
+            -   When the right contrast is greater than the left contrast: If the mouse turned the wheel to the left, feedback_type = 1. If turned to the right, feedback_type = -1.
+            -   When the left contrast is greater than the right contrast: If the mouse turned the wheel to the right, feedback_type = 1. If turned to the left, feedback_type = -1.
+            -   When the left contrast and right contrast equal 0: If mouse held the wheel still, feedback_type = 1. Otherwise, feedback_type = -1.
+            -   When the left contrast and right contrast are equal and not both 0: There is a 50% chance that feedback_type = 1 or -1.
+        -   mouse_name:
+        -   spks: Numbers of spikes of neurons in the visual cortex. Holds many different trials.
+        -   time:
+
+-   Existing research and known results
+
+## Exploratory Analysis
+
+3)  Exploratory Analysis
+
+-   Basic descriptive statistics (missing, mean, quartiles, \# of observations)
+-   Data visualization (features, patterns in data)
+
+## Methodology
+
+4)  Methodology:
+
+-   Data Integration: PCA, clustering (improving prediction performance)
+-   Predictive Model (GLM, linear regression, time series)
+
+### Data Integration
+
+### Predictive Modeling
+
+5)  Result (prediction performance)
+
+6)  Conclusion, Discussion
+
+-   Findings, variable information, drawbacks/disadvantages, next steps
+
+7)  References
+
+```{r}
+
+session=list()
+for(i in 1:18){
+  session[[i]]=readRDS(paste('./Data/session',i,'.rds',sep=''))
+  #print(session[[i]]$mouse_name)
+  #print(session[[i]]$date_exp)
+  
+}
+
+```
+
+## Understanding the DataSet
+
+# Information of each session
+```{r}
+
+# Get the variables recorded within this session
+print(ls(session[[1]])) # or names(session[[1]]))
+
+#Determine the different variables and details within each session
+for (i in 1:18) {
+  
+  message("Session ", i)
+  
+  session_i <- session[[i]]
+  
+  print(session[[i]]$mouse_name)
+  print(session[[i]]$date_exp)
+  
+  # Get the affected brain areas within this session
+  print("Affected brain areas:")
+  print(unique(session_i$brain_area))
+  
+  # Get the number of trials within the session
+  print("Number of trials:")
+  print(length(session_i$feedback_type))
+  
+
+}
+
+```
+
+
+# Parse Into Dataframe Method 1
+```{r}
+
+#Ask if we should be calculating average row by row in a trial, and then taking average of each row to get whole average for trial
+
+
+sessionDF <- data.frame()
+
+for (i in 1:18) {
+
+  #Create a custom dataframe here with 4 columns for 4 variables
+  trialDF <- data.frame(matrix(ncol = 4, nrow = 0))
+
+  for (j in 1:length(session[[i]]$spks)) { 
+    
+    # Calculate the total number of neurons active
+    neuronCountTable = table(unlist(session[[i]]$spks[[j]]))
+    neuronCountValues = as.numeric(neuronCountTable)
+    numActiveNeurons = length(session[[i]]$spks[[j]]) - neuronCountValues[1] #neuronCountValues[1] is the # of 0's
+    
+    # Calculate the total number of spks
+    numSpks = 0
+    for(k in 1:length(neuronCountTable)) {
+    
+      numSpks = numSpks + ((k-1) * neuronCountValues[k])
+      
+    }
+    
+    # Calculate the proportion of active neurons
+    activeNeuronProp = numActiveNeurons / length(session[[i]]$spks[[i]])
+    
+    # Calculate the firing rate (total number of spks != 0 divided by total)
+    firing_rate = numSpks / (numSpks + neuronCountValues[1])
+    
+    
+    # Append to the variables to the trial data frame
+    trialDF[nrow(trialDF) + 1,] = c(numActiveNeurons, numSpks, activeNeuronProp, firing_rate)
+    
+  }
+  
+
+  # Append data together using cbind
+  tempSession = cbind(rep(i,length(session[[i]]$contrast_left)),
+                       seq(1, length(session[[i]]$spks)),
+                       session[[i]]$mouse_name, 
+                       session[[i]]$contrast_left,
+                       session[[i]]$contrast_right,
+                       length(session[[i]]$brain_area),
+                       length(unique(session[[i]]$brain_area)),
+                       length(session[[i]]$spks),
+                       trialDF,
+                       session[[i]]$feedback_type
+                       )
+  
+  # Append each session using rbind
+  if (i == 1){
+    sessionDF <- tempSession
+  }
+  else {
+    sessionDF = rbind(sessionDF, tempSession)
+  }
+  
+  
+}
+
+
+colnames(sessionDF) = c("session_number", "trial_number", "mouse_name", "contrast_left", "contrast_right", "total_number_of_neurons", "number_of_unique_brain_area", "number_of_trials", "number_of_active_neurons", "total_number_of_spks", "proportion_of_active_neurons", "firing_rate", "feedback_type")
+sessionDF = as.data.frame(sessionDF)
+sessionDF$trial_number = as.factor(sessionDF$trial_number)
+sessionDF$contrast_left = as.factor(sessionDF$contrast_left)
+sessionDF$contrast_right = as.factor(sessionDF$contrast_right)
+sessionDF$session = as.factor(sessionDF$session)
+sessionDF$mouse = as.factor(sessionDF$mouse)
+sessionDF$feedback_type = as.factor(sessionDF$feedback_type)
+head(sessionDF)
+
+
+```
+
+# Parse into Dataframe Method 2
+```{r}
+
+n.session=length(session)
+
+# in library tidyverse
+meta <- tibble(
+  mouse_name = rep('name',n.session),
+  date_exp =rep('dt',n.session),
+  n_brain_area = rep(0,n.session),
+  n_neurons = rep(0,n.session),
+  n_trials = rep(0,n.session),
+  success_rate = rep(0,n.session)
+)
+
+
+for(i in 1:n.session){
+  tmp = session[[i]]
+  meta[i,1]=tmp$mouse_name;
+  meta[i,2]=tmp$date_exp;
+  meta[i,3]=length(unique(tmp$brain_area));
+  meta[i,4]=dim(tmp$spks[[1]])[1];
+  meta[i,5]=length(tmp$feedback_type);
+  meta[i,6]=mean(tmp$feedback_type+1)/2;
+  
+}
+
+kable(meta, format = "html", table.attr = "class='table table-striped'",digits=2) 
+
+
+```
+
+
+
+# Extra
+```{r}
+
+dat <- session[[1]]
+
+#session[[1]]$brain_area
+
+unique(dat$brain_area)
+
+i_trial = 12;
+i_session = 1;
+
+dim(session[[i_session]]$spks[[i_trial]])
+
+length(session[[i_session]]$feedback_type)
+
+apply(session[[i_session]]$spks[[i_trial]], 2, sum)
+
+names(session[[2]])
+
+#Use different spks trials to make predictive models (logistic regression will work, show some linear or svm)
+session[[i_session]]$spks[[i_trial]]
+#to predict:
+#session[[i_session]]$feedback_type[i_trial]
+
+# LOOK AT COURSE PROJECT DESCRIPTION .RMD FOR VARIABLE EXPLORATION
+
+#Ask if we are using the trials of spks in combination with other recorded variables (eg. brain_area, contrast_left, contrast_right) to predict the feedback_type. Yes
+
+#Predict the feedback_type per trial, not session
+
+# Create df including all sessions, each session df will have rows as trials, and the columns will be variables of each trial (contrast_left, contrast_right, firing_rate, feedback_type). Use bind to stack each session df.
+
+```
+
+```{r}
+session[[5]]$spks[[11]]
+session[[5]]$contrast_left[11]
+session[[5]]$contrast_right[11]
+session[[5]]$feedback_type[11]
+
+length(session[[5]]$spks[[1]])
+table(unlist(session[[5]]$spks[1]))
+
+length(session[[5]]$spks)
+
+#Why is this different
+length(session[[1]]$spks[[1]])
+length(session[[1]]$spks[1])
+#if this results in same
+session[[1]]$spks[[1]]
+session[[1]]$spks[1]
+
+```
+
+```{r}
+session1=cbind(session[[1]]$contrast_left,session[[1]]$contrast_right,rep(1,length(session[[1]]$contrast_left)),session[[1]]$mouse_name,length(session[[1]]$brain_area),length(unique(session[[1]]$brain_area)),length(session[[1]]$spks),session[[1]]$feedback_type)
+
+session2=cbind(session[[2]]$contrast_left,session[[2]]$contrast_right,rep(2,length(session[[2]]$contrast_left)),session[[2]]$mouse_name,length(session[[2]]$brain_area),length(unique(session[[2]]$brain_area)),length(session[[2]]$spks),session[[2]]$feedback_type)
+
+session3=cbind(session[[3]]$contrast_left,session[[3]]$contrast_right,rep(3,length(session[[3]]$contrast_left)),session[[3]]$mouse_name,length(session[[3]]$brain_area),length(unique(session[[3]]$brain_area)),length(session[[3]]$spks),session[[3]]$feedback_type)
+
+session4=cbind(session[[4]]$contrast_left,session[4]$contrast_right,rep(4,length(session[[4]]$contrast_left)),session[[4]]$mouse_name,length(session[[4]]$brain_area),length(unique(session[[4]]$brain_area)),length(session[[4]]$spks),session[[4]]$feedback_type)
+
+session5=cbind(session[[5]]$contrast_left,session[[5]]$contrast_right,rep(5,length(session[[5]]$contrast_left)),session[[5]]$mouse_name,length(session[[5]]$brain_area),length(unique(session[[5]]$brain_area)),length(session[[5]]$spks),session[[5]]$feedback_type)
+
+session6=cbind(session[[6]]$contrast_left,session[[6]]$contrast_right,rep(6,length(session[[6]]$contrast_left)),session[[6]]$mouse_name,length(session[[6]]$brain_area),length(unique(session[[6]]$brain_area)),length(session[[6]]$spks),session[[6]]$feedback_type)
+
+session7=cbind(session[[7]]$contrast_left,session[[7]]$contrast_right,rep(7,length(session[[7]]$contrast_left)),session[[7]]$mouse_name,length(session[[7]]$brain_area),length(unique(session[[7]]$brain_area)),length(session[[7]]$spks),session[[7]]$feedback_type)
+
+session8=cbind(session[[8]]$contrast_left,session[[8]]$contrast_right,rep(8,length(session[[8]]$contrast_left)),session[[8]]$mouse_name,length(session[[8]]$brain_area),length(unique(session[[8]]$brain_area)),length(session[[8]]$spks),session[[8]]$feedback_type)
+
+session9=cbind(session[[9]]$contrast_left,session[[9]]$contrast_right,rep(9,length(session[[9]]$contrast_left)),session[[9]]$mouse_name,length(session[[9]]$brain_area),length(unique(session[[9]]$brain_area)),length(session[[9]]$spks),session[[9]]$feedback_type)
+
+session10=cbind(session[[10]]$contrast_left,session[10]$contrast_right,rep(10,length(session[[10]]$contrast_left)),session[[10]]$mouse_name,length(session[[10]]$brain_area),length(unique(session[[10]]$brain_area)),length(session[[10]]$spks),session[[10]]$feedback_type)
+
+session11=cbind(session[[11]]$contrast_left,session[[11]]$contrast_right,rep(11,length(session[[11]]$contrast_left)),session[[11]]$mouse_name,length(session[[11]]$brain_area),length(unique(session[[11]]$brain_area)),length(session[[11]]$spks),session[[11]]$feedback_type)
+
+session12=cbind(session[[12]]$contrast_left,session[[12]]$contrast_right,rep(12,length(session[[12]]$contrast_left)),session[[12]]$mouse_name,length(session[[12]]$brain_area),length(unique(session[[12]]$brain_area)),length(session[[12]]$spks),session[[12]]$feedback_type)
+
+session13=cbind(session[[13]]$contrast_left,session[[13]]$contrast_right,rep(13,length(session[[13]]$contrast_left)),session[[13]]$mouse_name,length(session[[13]]$brain_area),length(unique(session[[13]]$brain_area)),length(session[[13]]$spks),session[[13]]$feedback_type)
+
+session14=cbind(session[[14]]$contrast_left,session[[14]]$contrast_right,rep(14,length(session[[14]]$contrast_left)),session[[14]]$mouse_name,length(session[[14]]$brain_area),length(unique(session[[14]]$brain_area)),length(session[[14]]$spks),session[[14]]$feedback_type)
+
+session15=cbind(session[[15]]$contrast_left,session[[15]]$contrast_right,rep(15,length(session[[15]]$contrast_left)),session[[15]]$mouse_name,length(session[[15]]$brain_area),length(unique(session[[15]]$brain_area)),length(session[[15]]$spks),session[[15]]$feedback_type)
+
+session16=cbind(session[[16]]$contrast_left,session[[16]]$contrast_right,rep(16,length(session[[16]]$contrast_left)),session[[16]]$mouse_name,length(session[[16]]$brain_area),length(unique(session[[16]]$brain_area)),length(session[[16]]$spks),session[[16]]$feedback_type)
+
+session17=cbind(session[[17]]$contrast_left,session[[17]]$contrast_right,rep(17,length(session[[17]]$contrast_left)),session[[17]]$mouse_name,length(session[[17]]$brain_area),length(unique(session[[17]]$brain_area)),length(session[[17]]$spks),session[[17]]$feedback_type)
+
+session18=cbind(session[[18]]$contrast_left,session[[18]]$contrast_right,rep(18,length(session[[18]]$contrast_left)),session[[18]]$mouse_name,length(session[[18]]$brain_area),length(unique(session[[18]]$brain_area)),length(session[[18]]$spks),session[[18]]$feedback_type)
+
+
+df = rbind(session1, session2, session3)
+colnames(df) = c("contrast_left","contrast_right", "session","mouse","number_of_neurons","brain_area","number_of_trials", "feedback_type")
+df = as.data.frame(df)
+df$contrast_left = as.factor(df$contrast_left)
+df$contrast_right = as.factor(df$contrast_right)
+df$session = as.factor (df$session)
+df$mouse = as.factor(df$mouse)
+df$feedback_type = as.factor(df$feedback_type)
+head(df)
+
+
+
+```
+
+
+
+
+
+
+
