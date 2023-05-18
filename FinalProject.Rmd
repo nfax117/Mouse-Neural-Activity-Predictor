@@ -114,10 +114,33 @@ for (i in 1:18) {
 
 
 # Parse Into Dataframe Method 1
+
 ```{r}
+#Ask if we can have the average of spks not specific to brain area
 
 #Ask if we should be calculating average row by row in a trial, and then taking average of each row to get whole average for trial
 
+#Ask if we can use the method of calculating spks average per brain area for all sessions. If making it into one big dataframe, would we just have zero's when during the sessions where a brain area is not used?
+```
+
+
+```{r}
+# Create a function to calculate the average spks per brain area
+firing_rate_brainarea <- function(trialNum, currSession) {
+  
+  spkTrial = currSession$spks[[trialNum]]
+  currBrainArea = currSession$brain_area
+  spkCount = apply(spkTrial, 1, sum)
+  spkAvg = tapply(spkCount, currBrainArea, mean)
+  return(spkAvg)
+  
+}
+
+
+```
+
+
+```{r}
 
 sessionDF <- data.frame()
 
@@ -184,8 +207,8 @@ sessionDF = as.data.frame(sessionDF)
 sessionDF$trial_number = as.factor(sessionDF$trial_number)
 sessionDF$contrast_left = as.factor(sessionDF$contrast_left)
 sessionDF$contrast_right = as.factor(sessionDF$contrast_right)
-sessionDF$session = as.factor(sessionDF$session)
-sessionDF$mouse = as.factor(sessionDF$mouse)
+#sessionDF$session = as.factor(sessionDF$session)
+#sessionDF$mouse = as.factor(sessionDF$mouse)
 sessionDF$feedback_type = as.factor(sessionDF$feedback_type)
 head(sessionDF)
 

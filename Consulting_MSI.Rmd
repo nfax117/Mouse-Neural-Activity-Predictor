@@ -180,6 +180,7 @@ colnames(trial.summary)=c(names(average_spike_area(i.t,this_session = session[[i
 
 # Turning it into a data frame
 trial.summary <- as_tibble(trial.summary)
+head(trial.summary)
  
 ```
 
