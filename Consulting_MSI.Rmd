@@ -163,6 +163,8 @@ Now we are ready to apply the function across all trials and create a data frame
 
 ```{r}
 
+#This is for one session, turn this into a function so that we can apply it to all session and then bind it to main dataframe
+
 n.trial=length(session[[i.s]]$feedback_type)
 n.area=length(unique(session[[i.s]]$brain_area ))
 # Alternatively, you can extract these information in the meta that we created before.

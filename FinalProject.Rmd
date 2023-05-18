@@ -37,9 +37,9 @@ abstract: |
             -   When the left contrast is greater than the right contrast: If the mouse turned the wheel to the right, feedback_type = 1. If turned to the left, feedback_type = -1.
             -   When the left contrast and right contrast equal 0: If mouse held the wheel still, feedback_type = 1. Otherwise, feedback_type = -1.
             -   When the left contrast and right contrast are equal and not both 0: There is a 50% chance that feedback_type = 1 or -1.
-        -   mouse_name:
+        -   mouse_name: Name of the mouse being used in the experiment (trial). Specific to this project, the 4 mice are Cori, Forssmann, Hench, and Lederberg.
         -   spks: Numbers of spikes of neurons in the visual cortex. Holds many different trials.
-        -   time:
+        -   time: Center of the time bins for the spks.
 
 -   Existing research and known results
 
@@ -84,6 +84,7 @@ for(i in 1:18){
 ## Understanding the DataSet
 
 # Information of each session
+
 ```{r}
 
 # Get the variables recorded within this session
@@ -112,20 +113,22 @@ for (i in 1:18) {
 
 ```
 
-
 # Parse Into Dataframe Method 1
 
 ```{r}
-#Ask if we can have the average of spks not specific to brain area
 
-#Ask if we should be calculating average row by row in a trial, and then taking average of each row to get whole average for trial
+#See which brain area is responsible for feedback
 
-#Ask if we can use the method of calculating spks average per brain area for all sessions. If making it into one big dataframe, would we just have zero's when during the sessions where a brain area is not used?
+#Create boxplot (can be other plots) of one brain area, the firing rate (or num of neurons) and feedback_type
+
+# Have two dataframes, one for average spks across trials, another for average spikes per brain area for each session
+
+# Maybe try to find how brain area firing rates differ between mice
+
 ```
 
-
 ```{r}
-# Create a function to calculate the average spks per brain area
+# Function to calculate the average spks per brain area for the specific trial of a session
 firing_rate_brainarea <- function(trialNum, currSession) {
   
   spkTrial = currSession$spks[[trialNum]]
@@ -136,9 +139,16 @@ firing_rate_brainarea <- function(trialNum, currSession) {
   
 }
 
+# Function to find average spks per brain area for all trials in a session, and bind to create one dataframe of all trials for the session
+# Form plots and summaries based on brain area per session
+
+
+
+# Function that uses above function to apply to all sessions
+
+
 
 ```
-
 
 ```{r}
 
@@ -212,10 +222,19 @@ sessionDF$contrast_right = as.factor(sessionDF$contrast_right)
 sessionDF$feedback_type = as.factor(sessionDF$feedback_type)
 head(sessionDF)
 
+```
+
+# Plots for Dataframe Method 1
+
+```{r}
+
+# Box plots of firing rate (or numberofactiveneurons, total num of spikes, or proportion) on feedbacktype
+# Mention how spks and active neurons are different, since there can be multiple spks per neuron
 
 ```
 
 # Parse into Dataframe Method 2
+
 ```{r}
 
 n.session=length(session)
@@ -247,9 +266,8 @@ kable(meta, format = "html", table.attr = "class='table table-striped'",digits=2
 
 ```
 
-
-
 # Extra
+
 ```{r}
 
 dat <- session[[1]]
@@ -285,6 +303,7 @@ session[[i_session]]$spks[[i_trial]]
 ```
 
 ```{r}
+
 session[[5]]$spks[[11]]
 session[[5]]$contrast_left[11]
 session[[5]]$contrast_right[11]
@@ -303,62 +322,3 @@ session[[1]]$spks[[1]]
 session[[1]]$spks[1]
 
 ```
-
-```{r}
-session1=cbind(session[[1]]$contrast_left,session[[1]]$contrast_right,rep(1,length(session[[1]]$contrast_left)),session[[1]]$mouse_name,length(session[[1]]$brain_area),length(unique(session[[1]]$brain_area)),length(session[[1]]$spks),session[[1]]$feedback_type)
-
-session2=cbind(session[[2]]$contrast_left,session[[2]]$contrast_right,rep(2,length(session[[2]]$contrast_left)),session[[2]]$mouse_name,length(session[[2]]$brain_area),length(unique(session[[2]]$brain_area)),length(session[[2]]$spks),session[[2]]$feedback_type)
-
-session3=cbind(session[[3]]$contrast_left,session[[3]]$contrast_right,rep(3,length(session[[3]]$contrast_left)),session[[3]]$mouse_name,length(session[[3]]$brain_area),length(unique(session[[3]]$brain_area)),length(session[[3]]$spks),session[[3]]$feedback_type)
-
-session4=cbind(session[[4]]$contrast_left,session[4]$contrast_right,rep(4,length(session[[4]]$contrast_left)),session[[4]]$mouse_name,length(session[[4]]$brain_area),length(unique(session[[4]]$brain_area)),length(session[[4]]$spks),session[[4]]$feedback_type)
-
-session5=cbind(session[[5]]$contrast_left,session[[5]]$contrast_right,rep(5,length(session[[5]]$contrast_left)),session[[5]]$mouse_name,length(session[[5]]$brain_area),length(unique(session[[5]]$brain_area)),length(session[[5]]$spks),session[[5]]$feedback_type)
-
-session6=cbind(session[[6]]$contrast_left,session[[6]]$contrast_right,rep(6,length(session[[6]]$contrast_left)),session[[6]]$mouse_name,length(session[[6]]$brain_area),length(unique(session[[6]]$brain_area)),length(session[[6]]$spks),session[[6]]$feedback_type)
-
-session7=cbind(session[[7]]$contrast_left,session[[7]]$contrast_right,rep(7,length(session[[7]]$contrast_left)),session[[7]]$mouse_name,length(session[[7]]$brain_area),length(unique(session[[7]]$brain_area)),length(session[[7]]$spks),session[[7]]$feedback_type)
-
-session8=cbind(session[[8]]$contrast_left,session[[8]]$contrast_right,rep(8,length(session[[8]]$contrast_left)),session[[8]]$mouse_name,length(session[[8]]$brain_area),length(unique(session[[8]]$brain_area)),length(session[[8]]$spks),session[[8]]$feedback_type)
-
-session9=cbind(session[[9]]$contrast_left,session[[9]]$contrast_right,rep(9,length(session[[9]]$contrast_left)),session[[9]]$mouse_name,length(session[[9]]$brain_area),length(unique(session[[9]]$brain_area)),length(session[[9]]$spks),session[[9]]$feedback_type)
-
-session10=cbind(session[[10]]$contrast_left,session[10]$contrast_right,rep(10,length(session[[10]]$contrast_left)),session[[10]]$mouse_name,length(session[[10]]$brain_area),length(unique(session[[10]]$brain_area)),length(session[[10]]$spks),session[[10]]$feedback_type)
-
-session11=cbind(session[[11]]$contrast_left,session[[11]]$contrast_right,rep(11,length(session[[11]]$contrast_left)),session[[11]]$mouse_name,length(session[[11]]$brain_area),length(unique(session[[11]]$brain_area)),length(session[[11]]$spks),session[[11]]$feedback_type)
-
-session12=cbind(session[[12]]$contrast_left,session[[12]]$contrast_right,rep(12,length(session[[12]]$contrast_left)),session[[12]]$mouse_name,length(session[[12]]$brain_area),length(unique(session[[12]]$brain_area)),length(session[[12]]$spks),session[[12]]$feedback_type)
-
-session13=cbind(session[[13]]$contrast_left,session[[13]]$contrast_right,rep(13,length(session[[13]]$contrast_left)),session[[13]]$mouse_name,length(session[[13]]$brain_area),length(unique(session[[13]]$brain_area)),length(session[[13]]$spks),session[[13]]$feedback_type)
-
-session14=cbind(session[[14]]$contrast_left,session[[14]]$contrast_right,rep(14,length(session[[14]]$contrast_left)),session[[14]]$mouse_name,length(session[[14]]$brain_area),length(unique(session[[14]]$brain_area)),length(session[[14]]$spks),session[[14]]$feedback_type)
-
-session15=cbind(session[[15]]$contrast_left,session[[15]]$contrast_right,rep(15,length(session[[15]]$contrast_left)),session[[15]]$mouse_name,length(session[[15]]$brain_area),length(unique(session[[15]]$brain_area)),length(session[[15]]$spks),session[[15]]$feedback_type)
-
-session16=cbind(session[[16]]$contrast_left,session[[16]]$contrast_right,rep(16,length(session[[16]]$contrast_left)),session[[16]]$mouse_name,length(session[[16]]$brain_area),length(unique(session[[16]]$brain_area)),length(session[[16]]$spks),session[[16]]$feedback_type)
-
-session17=cbind(session[[17]]$contrast_left,session[[17]]$contrast_right,rep(17,length(session[[17]]$contrast_left)),session[[17]]$mouse_name,length(session[[17]]$brain_area),length(unique(session[[17]]$brain_area)),length(session[[17]]$spks),session[[17]]$feedback_type)
-
-session18=cbind(session[[18]]$contrast_left,session[[18]]$contrast_right,rep(18,length(session[[18]]$contrast_left)),session[[18]]$mouse_name,length(session[[18]]$brain_area),length(unique(session[[18]]$brain_area)),length(session[[18]]$spks),session[[18]]$feedback_type)
-
-
-df = rbind(session1, session2, session3)
-colnames(df) = c("contrast_left","contrast_right", "session","mouse","number_of_neurons","brain_area","number_of_trials", "feedback_type")
-df = as.data.frame(df)
-df$contrast_left = as.factor(df$contrast_left)
-df$contrast_right = as.factor(df$contrast_right)
-df$session = as.factor (df$session)
-df$mouse = as.factor(df$mouse)
-df$feedback_type = as.factor(df$feedback_type)
-head(df)
-
-
-
-```
-
-
-
-
-
-
-
