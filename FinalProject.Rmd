@@ -76,6 +76,7 @@ suppressWarnings(library(ggplot2))
 suppressWarnings(library(knitr))
 suppressWarnings(library(dplyr))
 suppressWarnings(library(gtools))
+suppressWarnings(library(corrplot))
 suppressWarnings(library(gridExtra))
 suppressWarnings(library(PerformanceAnalytics))
 suppressWarnings(library(grDevices))
@@ -303,9 +304,9 @@ for (i in 1:18) {
 colnames(sessionDF) = c("session_number", "trial_number", "mouse_name", "contrast_left", "contrast_right", "total_number_of_neurons", "number_of_unique_brain_area", "number_of_trials", "number_of_active_neurons", "total_number_of_spks", "proportion_of_active_neurons", "firing_rate", "feedback_type")
 sessionDF = as.data.frame(sessionDF)
 sessionDF$trial_number = as.factor(sessionDF$trial_number)
-sessionDF$contrast_left = as.factor(sessionDF$contrast_left)
-sessionDF$contrast_right = as.factor(sessionDF$contrast_right)
-sessionDF$feedback_type = as.factor(sessionDF$feedback_type)
+#sessionDF$contrast_left = as.factor(sessionDF$contrast_left)
+#sessionDF$contrast_right = as.factor(sessionDF$contrast_right)
+#sessionDF$feedback_type = as.factor(sessionDF$feedback_type)
 head(sessionDF)
 
 ```
@@ -335,6 +336,24 @@ proportionActiveNeurons_by_feedback_boxPlot <- ggplot(sessionDF, aes(x = feedbac
 
 grid.arrange(firingRate_by_feedback_boxPlot, proportionActiveNeurons_by_feedback_boxPlot, numActiveNeurons_by_feedback_boxPlot, totalNumSpikes_by_feedback_boxPlot, nrow = 2, ncol = 2)
  
+
+# Correlation Matrices for each Session
+for (i in 1:18) {
+  
+  corrplot.mixed(round(cor(sessionDF[sessionDF$session_number == i, c('contrast_left', 'contrast_right', 'number_of_active_neurons', 'total_number_of_spks', 'proportion_of_active_neurons', 'firing_rate', 'feedback_type')]), 2), title = paste("Correlation Matrix of Session", i), mar=c(1,1,1,1))
+  
+}
+
+
+# Correlation Matrices for Each Mouse
+mouseNameVector <- c('Cori', 'Forssmann', 'Hench', 'Lederberg')
+for (i in 1:length(mouseNameVector)) {
+  
+  corrplot.mixed(round(cor(sessionDF[sessionDF$mouse_name == mouseNameVector[i], c('contrast_left', 'contrast_right', 'number_of_active_neurons', 'total_number_of_spks', 'proportion_of_active_neurons', 'firing_rate', 'feedback_type')]), 2), title = paste("Correlation Matrix of Mouse", mouseNameVector[i]), mar=c(1,1,1,1))
+  
+}
+
+
 
 ```
 
