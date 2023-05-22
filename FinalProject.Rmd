@@ -69,6 +69,20 @@ abstract: |
 
 7)  References
 
+
+```{r}
+suppressWarnings(library(tidyverse))
+suppressWarnings(library(ggplot2))
+suppressWarnings(library(knitr))
+suppressWarnings(library(dplyr))
+suppressWarnings(library(gtools))
+suppressWarnings(library(gridExtra))
+suppressWarnings(library(PerformanceAnalytics))
+suppressWarnings(library(grDevices))
+suppressWarnings(library(viridis))
+suppressWarnings(library(RColorBrewer))
+```
+
 ```{r}
 
 session=list()
@@ -91,6 +105,9 @@ for(i in 1:18){
 print(ls(session[[1]])) # or names(session[[1]]))
 
 #Determine the different variables and details within each session
+
+uniqueBrainareasVector <- c()
+
 for (i in 1:18) {
   
   message("Session ", i)
@@ -104,12 +121,21 @@ for (i in 1:18) {
   print("Affected brain areas:")
   print(unique(session_i$brain_area))
   
+  uniqueBrainareasVector <- append(uniqueBrainareasVector, unique(session_i$brain_area))
+  
   # Get the number of trials within the session
   print("Number of trials:")
   print(length(session_i$feedback_type))
   
-
 }
+
+# Get the unique brainareas through all sessions
+uniqueBrainareasVector <- unique(uniqueBrainareasVector)
+uniqueBrainareasVectorLength = length(uniqueBrainareasVector)
+message("There are ", uniqueBrainareasVectorLength, " unique brain areas throughout all sessions:")
+print(uniqueBrainareasVector)
+
+
 
 ```
 
@@ -139,14 +165,76 @@ firing_rate_brainarea <- function(trialNum, currSession) {
   
 }
 
-# Function to find average spks per brain area for all trials in a session, and bind to create one dataframe of all trials for the session
-# Form plots and summaries based on brain area per session
+
+# Function to find average spks per brain area for all trials in a session
+trial_firing_rate_brainarea <- function(sessionNum) {
+  
+  trialLen = length(session[[sessionNum]]$feedback_type)
+  brainareaLen = length(unique(session[[sessionNum]]$brain_area))
+  
+  trialBrainareaSummary = matrix(nrow = trialLen, ncol = brainareaLen + 2)
+  
+  for(q in 1:trialLen) {
+    
+    trialBrainareaSummary[q,] = c(firing_rate_brainarea(q, currSession = session[[sessionNum]]), sessionNum, q)
+    
+  }
+  
+  colnames(trialBrainareaSummary) = c(names(firing_rate_brainarea(q,currSession = session[[sessionNum]])), 'session_number', 'trial_number')
+  
+  trialBrainareaSummary <- as_tibble(trialBrainareaSummary)
+  
+  
+  # Plot the spikes per area in each session against trials
+  colorPalette = brewer.pal(n=brainareaLen, name = 'Paired')
+
+  plot(0~1, col='white',xlim=c(0,trialLen),ylim=c(0.5,2.2), xlab="Trials",ylab="Average Spike Counts", main=paste("Spikes per Area in Session", sessionNum))
+  
+  for(i in 1:brainareaLen){
+    lines(y=trialBrainareaSummary[[i]],x=trialBrainareaSummary$trial_number,col=colorPalette[i],lty=2,lwd=1)
+    lines(smooth.spline(trialBrainareaSummary$trial_number, trialBrainareaSummary[[i]]),col=colorPalette[i],lwd=3)
+  }
+  
+  legend("topright", 
+         legend = colnames(trialBrainareaSummary)[1:brainareaLen], 
+         col = colorPalette, 
+         lty = 1, 
+         cex = 0.8
+  )
+    
+    
+    # Plot the correlation matrix for the brain areas
+    correlationMatrixPlot <- suppressWarnings(chart.Correlation(trialBrainareaSummary[, 3:brainareaLen], histogram = TRUE, pch = 7, alpha = 0.3))
+    correlationMatrixPlot
+    
+  
+  # Return the dataframe of brain areas for one session
+  return(trialBrainareaSummary)
+  
+}
+
+# TODO: Try to make plots side by side for each session
+
+# Use above function to apply to all sessions, bind them together to make one dataframe of all session brainarea spk averages. 
+
+brainarea_firing_rateDF <- data.frame()
+
+for (p in 1:18) {
+  
+  brainarea_firing_rateDF = bind_rows(brainarea_firing_rateDF, trial_firing_rate_brainarea(p))
+
+}
+
+head(brainarea_firing_rateDF)
 
 
 
-# Function that uses above function to apply to all sessions
 
-
+# In the correlation matrices:
+#The distribution of each variable is shown on the diagonal.
+#On the bottom of the diagonal : the bivariate scatter plots with a fitted line are displayed
+#On the top of the diagonal : the value of the correlation plus the significance level as stars
+#Each significance level is associated to a symbol : p-values(0, 0.001, 0.01, 0.05, 0.1, 1) <=> symbols(“***”, “**”, “*”, “.”, " “)
 
 ```
 
@@ -217,8 +305,6 @@ sessionDF = as.data.frame(sessionDF)
 sessionDF$trial_number = as.factor(sessionDF$trial_number)
 sessionDF$contrast_left = as.factor(sessionDF$contrast_left)
 sessionDF$contrast_right = as.factor(sessionDF$contrast_right)
-#sessionDF$session = as.factor(sessionDF$session)
-#sessionDF$mouse = as.factor(sessionDF$mouse)
 sessionDF$feedback_type = as.factor(sessionDF$feedback_type)
 head(sessionDF)
 
@@ -231,40 +317,27 @@ head(sessionDF)
 # Box plots of firing rate (or numberofactiveneurons, total num of spikes, or proportion) on feedbacktype
 # Mention how spks and active neurons are different, since there can be multiple spks per neuron
 
-```
 
-# Parse into Dataframe Method 2
+# Box Plots
 
-```{r}
+# Firing Rate on Feedback Type
+firingRate_by_feedback_boxPlot <- ggplot(sessionDF, aes(x = feedback_type, y = firing_rate, col = feedback_type)) + geom_boxplot(outlier.colour="red", outlier.shape=8, outlier.size=2, alpha = 0.2) + xlab("Feedback Type") + ylab("Firing Rate") + ggtitle("Box Plot of Firing Rate on Feedback Type") + theme(legend.position="none")
 
-n.session=length(session)
+# Number of Active Neurons on Feedback Type
+numActiveNeurons_by_feedback_boxPlot <- ggplot(sessionDF, aes(x = feedback_type, y = number_of_active_neurons, col = feedback_type)) + geom_boxplot(outlier.colour="red", outlier.shape=8, outlier.size=2, alpha = 0.2) + xlab("Feedback Type") + ylab("Number of Active Neurons") + ggtitle("Box Plot of Number of Active Neurons on Feedback Type") + theme(legend.position="none")
 
-# in library tidyverse
-meta <- tibble(
-  mouse_name = rep('name',n.session),
-  date_exp =rep('dt',n.session),
-  n_brain_area = rep(0,n.session),
-  n_neurons = rep(0,n.session),
-  n_trials = rep(0,n.session),
-  success_rate = rep(0,n.session)
-)
+# Total Number of Spikes on Feedback Type
+totalNumSpikes_by_feedback_boxPlot <- ggplot(sessionDF, aes(x = feedback_type, y = total_number_of_spks, col = feedback_type)) + geom_boxplot(outlier.colour="red", outlier.shape=8, outlier.size=2, alpha = 0.2) + xlab("Feedback Type") + ylab("Total Number of Spikes") + ggtitle("Box Plot of Total Number of Spikes on Feedback Type") + theme(legend.position="none")
+
+# Proportion of Active Neurons on Feedback Type
+proportionActiveNeurons_by_feedback_boxPlot <- ggplot(sessionDF, aes(x = feedback_type, y = proportion_of_active_neurons, col = feedback_type)) + geom_boxplot(outlier.colour="red", outlier.shape=8, outlier.size=2, alpha = 0.2) + xlab("Feedback Type") + ylab("Proportion of Active Neurons") + ggtitle("Box Plot of Proportion of Active Neurons on Feedback Type") + theme(legend.position="none")
 
 
-for(i in 1:n.session){
-  tmp = session[[i]]
-  meta[i,1]=tmp$mouse_name;
-  meta[i,2]=tmp$date_exp;
-  meta[i,3]=length(unique(tmp$brain_area));
-  meta[i,4]=dim(tmp$spks[[1]])[1];
-  meta[i,5]=length(tmp$feedback_type);
-  meta[i,6]=mean(tmp$feedback_type+1)/2;
-  
-}
-
-kable(meta, format = "html", table.attr = "class='table table-striped'",digits=2) 
-
+grid.arrange(firingRate_by_feedback_boxPlot, proportionActiveNeurons_by_feedback_boxPlot, numActiveNeurons_by_feedback_boxPlot, totalNumSpikes_by_feedback_boxPlot, nrow = 2, ncol = 2)
+ 
 
 ```
+
 
 # Extra
 
