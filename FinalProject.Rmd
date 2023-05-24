@@ -306,7 +306,8 @@ for (i in 1:18) {
 
 colnames(sessionDF) = c("session_number", "trial_number", "mouse_name", "contrast_left", "contrast_right", "total_number_of_neurons", "number_of_unique_brain_area", "number_of_trials", "number_of_active_neurons", "total_number_of_spks", "proportion_of_active_neurons", "firing_rate", "feedback_type")
 sessionDF = as.data.frame(sessionDF)
-sessionDF$trial_number = as.factor(sessionDF$trial_number)
+sessionDF$session_number = as.factor(sessionDF$session_number)
+#sessionDF$trial_number = as.factor(sessionDF$trial_number)
 #sessionDF$contrast_left = as.factor(sessionDF$contrast_left)
 #sessionDF$contrast_right = as.factor(sessionDF$contrast_right)
 #sessionDF$feedback_type = as.factor(sessionDF$feedback_type)
@@ -325,16 +326,16 @@ head(sessionDF)
 # Box Plots
 
 # Firing Rate on Feedback Type
-firingRate_by_feedback_boxPlot <- ggplot(sessionDF, aes(x = feedback_type, y = firing_rate, col = feedback_type)) + geom_boxplot(outlier.colour="red", outlier.shape=8, outlier.size=2, alpha = 0.2) + xlab("Feedback Type") + ylab("Firing Rate") + ggtitle("Box Plot of Firing Rate on Feedback Type") + theme(legend.position="none")
+firingRate_by_feedback_boxPlot <- ggplot(sessionDF, aes(x = feedback_type, y = firing_rate, group = 1)) + geom_boxplot(outlier.color="red", outlier.shape=8, outlier.size=2, alpha = 0.2) + xlab("Feedback Type") + ylab("Firing Rate") + ggtitle("Box Plot of Firing Rate on Feedback Type") + theme(legend.position="none")
 
 # Number of Active Neurons on Feedback Type
-numActiveNeurons_by_feedback_boxPlot <- ggplot(sessionDF, aes(x = feedback_type, y = number_of_active_neurons, col = feedback_type)) + geom_boxplot(outlier.colour="red", outlier.shape=8, outlier.size=2, alpha = 0.2) + xlab("Feedback Type") + ylab("Number of Active Neurons") + ggtitle("Box Plot of Number of Active Neurons on Feedback Type") + theme(legend.position="none")
+numActiveNeurons_by_feedback_boxPlot <- ggplot(sessionDF, aes(x = feedback_type, y = number_of_active_neurons, group = 1)) + geom_boxplot(outlier.color="red", outlier.shape=8, outlier.size=2, alpha = 0.2) + xlab("Feedback Type") + ylab("Number of Active Neurons") + ggtitle("Box Plot of Number of Active Neurons on Feedback Type") + theme(legend.position="none")
 
 # Total Number of Spikes on Feedback Type
-totalNumSpikes_by_feedback_boxPlot <- ggplot(sessionDF, aes(x = feedback_type, y = total_number_of_spks, col = feedback_type)) + geom_boxplot(outlier.colour="red", outlier.shape=8, outlier.size=2, alpha = 0.2) + xlab("Feedback Type") + ylab("Total Number of Spikes") + ggtitle("Box Plot of Total Number of Spikes on Feedback Type") + theme(legend.position="none")
+totalNumSpikes_by_feedback_boxPlot <- ggplot(sessionDF, aes(x = feedback_type, y = total_number_of_spks, group = 1)) + geom_boxplot(outlier.color="red", outlier.shape=8, outlier.size=2, alpha = 0.2) + xlab("Feedback Type") + ylab("Total Number of Spikes") + ggtitle("Box Plot of Total Number of Spikes on Feedback Type") + theme(legend.position="none")
 
 # Proportion of Active Neurons on Feedback Type
-proportionActiveNeurons_by_feedback_boxPlot <- ggplot(sessionDF, aes(x = feedback_type, y = proportion_of_active_neurons, col = feedback_type)) + geom_boxplot(outlier.colour="red", outlier.shape=8, outlier.size=2, alpha = 0.2) + xlab("Feedback Type") + ylab("Proportion of Active Neurons") + ggtitle("Box Plot of Proportion of Active Neurons on Feedback Type") + theme(legend.position="none")
+proportionActiveNeurons_by_feedback_boxPlot <- ggplot(sessionDF, aes(x = feedback_type, y = proportion_of_active_neurons, group = 1)) + geom_boxplot(outlier.color="red", outlier.shape=8, outlier.size=2, alpha = 0.2) + xlab("Feedback Type") + ylab("Proportion of Active Neurons") + ggtitle("Box Plot of Proportion of Active Neurons on Feedback Type") + theme(legend.position="none")
 
 
 grid.arrange(firingRate_by_feedback_boxPlot, proportionActiveNeurons_by_feedback_boxPlot, numActiveNeurons_by_feedback_boxPlot, totalNumSpikes_by_feedback_boxPlot, nrow = 2, ncol = 2)
@@ -364,20 +365,38 @@ for (i in 1:length(mouseNameVector)) {
 
 ```
 
+
 ```{r}
-# Plots for variables against trials
+
+# Plots for variables against trials (for individual session analyis)
 
 for (i in 1:18) {
  
-  plot1 <- ggplot(sessionDF[sessionDF$session_number == i,], aes(x = trial_number, y = number_of_active_neurons)) + geom_point() + geom_smooth(method="lm")
-  plot2 <- ggplot(sessionDF[sessionDF$session_number == i,], aes(x = trial_number, y = total_number_of_spks)) + geom_point() + geom_smooth(method="lm")
-  plot3 <- ggplot(sessionDF[sessionDF$session_number == i,], aes(x = trial_number, y = proportion_of_active_neurons)) + geom_point() + geom_smooth(method="lm")
-  plot4 <- ggplot(sessionDF[sessionDF$session_number == i,], aes(x = trial_number, y = firing_rate)) + geom_point() + geom_smooth(method="lm")
+  plot1 <- ggplot(sessionDF[sessionDF$session_number == i,], aes(x = trial_number, y = number_of_active_neurons)) + geom_point() + geom_smooth(formula = y ~ x, method="lm") + ggtitle("Scatterplot of Number of Active Neurons Against Trials") + labs(y = "Number of Active Neurons", x = "Trials")
+  
+  plot2 <- ggplot(sessionDF[sessionDF$session_number == i,], aes(x = trial_number, y = total_number_of_spks)) + geom_point() + geom_smooth(formula = y ~ x, method="lm") + ggtitle("Scatterplot of Total Number of Spikes Against Trials") + labs(y = "Total Number of Spikes", x = "Trials")
+  
+  plot3 <- ggplot(sessionDF[sessionDF$session_number == i,], aes(x = trial_number, y = proportion_of_active_neurons)) + geom_point() + geom_smooth(formula = y ~ x, method="lm") + ggtitle("Scatterplot of Proportion of Active Neurons Against Trials") + labs(y = "Proportion of Active Neurons", x = "Trials")
+  
+  plot4 <- ggplot(sessionDF[sessionDF$session_number == i,], aes(x = trial_number, y = firing_rate)) + geom_point() + geom_smooth(formula = y ~ x, method="lm") + ggtitle("Scatterplot of Firing Rate Against Trials") + labs(y = "Firing Rate", x = "Trials")
   
   grid.arrange(plot1, plot2, plot3, plot4, nrow = 2, ncol = 2)
    
 }
 
+```
+
+
+```{r}
+# Plots for variables against trials (for session analysis)
+
+ggplot(sessionDF, aes(x = trial_number, y = number_of_active_neurons, colour = session_number)) + geom_point() + geom_smooth(method = "loess", formula = y ~ x) + ggtitle("Scatterplot of Number of Active Neurons Against Trials") + labs(y = "Number of Active Neurons", x = "Trials")
+
+ggplot(sessionDF, aes(x = trial_number, y = total_number_of_spks, colour = session_number)) + geom_point() + geom_smooth(method = "loess", formula = y ~ x) + ggtitle("Scatterplot of Total Number of Spikes Against Trials") + labs(y = "Total Number of Spikes", x = "Trials")
+
+ggplot(sessionDF, aes(x = trial_number, y = proportion_of_active_neurons, colour = session_number)) + geom_point() + geom_smooth(method = "loess", formula = y ~ x)  + ggtitle("Scatterplot of Proportion of Active Neurons Against Trials") + labs(y = "Proportion of Active Neurons", x = "Trials")
+
+ggplot(sessionDF, aes(x = trial_number, y = firing_rate, colour = session_number)) + geom_point() + geom_smooth(method = "loess", formula = y ~ x)  + ggtitle("Scatterplot of Firing Rate Against Trials") + labs(y = "Firing Rate", x = "Trials")
 
 
 ```
