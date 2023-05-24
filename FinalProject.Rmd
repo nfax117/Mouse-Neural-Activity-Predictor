@@ -140,7 +140,7 @@ print(uniqueBrainareasVector)
 
 ```
 
-# Parse Into Dataframe Method 1
+# Parse Into Dataframe
 
 ```{r}
 
@@ -155,6 +155,8 @@ print(uniqueBrainareasVector)
 ```
 
 ```{r}
+# Dataframe for the average spks per trial for each session
+
 # Function to calculate the average spks per brain area for the specific trial of a session
 firing_rate_brainarea <- function(trialNum, currSession) {
   
@@ -204,7 +206,7 @@ trial_firing_rate_brainarea <- function(sessionNum) {
   )
     
     
-    # Plot the correlation matrix for the brain areas
+    # Plot the correlation matrix for the brain areas, see if there are relations between brain areas
     correlationMatrixPlot <- suppressWarnings(chart.Correlation(trialBrainareaSummary[, 3:brainareaLen], histogram = TRUE, pch = 7, alpha = 0.3))
     correlationMatrixPlot
     
@@ -240,6 +242,7 @@ head(brainarea_firing_rateDF)
 ```
 
 ```{r}
+# Dataframe with general statistics across sessions
 
 sessionDF <- data.frame()
 
@@ -311,7 +314,7 @@ head(sessionDF)
 
 ```
 
-# Plots for Dataframe Method 1
+# Plots
 
 ```{r}
 
@@ -336,6 +339,9 @@ proportionActiveNeurons_by_feedback_boxPlot <- ggplot(sessionDF, aes(x = feedbac
 
 grid.arrange(firingRate_by_feedback_boxPlot, proportionActiveNeurons_by_feedback_boxPlot, numActiveNeurons_by_feedback_boxPlot, totalNumSpikes_by_feedback_boxPlot, nrow = 2, ncol = 2)
  
+```
+
+```{r}
 
 # Correlation Matrices for each Session
 for (i in 1:18) {
@@ -343,7 +349,10 @@ for (i in 1:18) {
   corrplot.mixed(round(cor(sessionDF[sessionDF$session_number == i, c('contrast_left', 'contrast_right', 'number_of_active_neurons', 'total_number_of_spks', 'proportion_of_active_neurons', 'firing_rate', 'feedback_type')]), 2), title = paste("Correlation Matrix of Session", i), mar=c(1,1,1,1))
   
 }
+```
 
+
+```{r}
 
 # Correlation Matrices for Each Mouse
 mouseNameVector <- c('Cori', 'Forssmann', 'Hench', 'Lederberg')
@@ -351,6 +360,22 @@ for (i in 1:length(mouseNameVector)) {
   
   corrplot.mixed(round(cor(sessionDF[sessionDF$mouse_name == mouseNameVector[i], c('contrast_left', 'contrast_right', 'number_of_active_neurons', 'total_number_of_spks', 'proportion_of_active_neurons', 'firing_rate', 'feedback_type')]), 2), title = paste("Correlation Matrix of Mouse", mouseNameVector[i]), mar=c(1,1,1,1))
   
+}
+
+```
+
+```{r}
+# Plots for variables against trials
+
+for (i in 1:18) {
+ 
+  plot1 <- ggplot(sessionDF[sessionDF$session_number == i,], aes(x = trial_number, y = number_of_active_neurons)) + geom_point() + geom_smooth(method="lm")
+  plot2 <- ggplot(sessionDF[sessionDF$session_number == i,], aes(x = trial_number, y = total_number_of_spks)) + geom_point() + geom_smooth(method="lm")
+  plot3 <- ggplot(sessionDF[sessionDF$session_number == i,], aes(x = trial_number, y = proportion_of_active_neurons)) + geom_point() + geom_smooth(method="lm")
+  plot4 <- ggplot(sessionDF[sessionDF$session_number == i,], aes(x = trial_number, y = firing_rate)) + geom_point() + geom_smooth(method="lm")
+  
+  grid.arrange(plot1, plot2, plot3, plot4, nrow = 2, ncol = 2)
+   
 }
 
 
@@ -380,7 +405,7 @@ apply(session[[i_session]]$spks[[i_trial]], 2, sum)
 names(session[[2]])
 
 #Use different spks trials to make predictive models (logistic regression will work, show some linear or svm)
-session[[i_session]]$spks[[i_trial]]
+#session[[i_session]]$spks[[i_trial]]
 #to predict:
 #session[[i_session]]$feedback_type[i_trial]
 
@@ -407,10 +432,10 @@ table(unlist(session[[5]]$spks[1]))
 length(session[[5]]$spks)
 
 #Why is this different
-length(session[[1]]$spks[[1]])
-length(session[[1]]$spks[1])
+#length(session[[1]]$spks[[1]])
+#length(session[[1]]$spks[1])
 #if this results in same
-session[[1]]$spks[[1]]
-session[[1]]$spks[1]
+#session[[1]]$spks[[1]]
+#session[[1]]$spks[1]
 
 ```
