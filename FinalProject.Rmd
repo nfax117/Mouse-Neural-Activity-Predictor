@@ -478,6 +478,9 @@ clusterDF %>% mutate(cluster = clusterDF.k3$cluster) %>%
 
 # One point is one row in dataframe
 # Append this vector to dataframe to see which rows relate to which cluster
+# Make separate dataframes of each cluster
+# run graphs and plots on these
+
 
 ```
 
