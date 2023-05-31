@@ -470,11 +470,19 @@ clusterDF.k3 <- clusterDF %>% kmeans(3)
  
 names(clusterDF.k3)
 
-clusterDF.k3$cluster
+clusterIndicatorVector <- clusterDF.k3$cluster
 
-clusterDF %>% mutate(cluster = clusterDF.k3$cluster) %>%
-  ggplot(aes(x = number_of_active_neurons, y = firing_rate, color = as.factor(cluster))) + 
-  geom_point()
+
+#clusterDF %>% mutate(cluster = clusterDF.k3$cluster) %>%
+#  ggplot(aes(x = number_of_active_neurons, y = firing_rate, color = as.factor(cluster))) + 
+#  geom_point()
+
+# Append the cluster indicator to the dataframes for further analysis
+completeDF <- cbind(clusterIndicatorVector, completeDF)
+clusterDF <- cbind(clusterIndicatorVector, clusterDF)
+
+colnames(completeDF)[1] <- "cluster_number"
+colnames(clusterDF)[1] <- "cluster_number"
 
 # One point is one row in dataframe
 # Append this vector to dataframe to see which rows relate to which cluster
