@@ -1,6 +1,6 @@
 ---
 title: "STA 141A Final Project: Predictive Model of Mice Neural Activity"
-author: "Nathaniel Faxon"
+author: "Nathaniel Faxon 917100572"
 date: "2023-04-18"
 output: html_document
 abstract: |
@@ -85,6 +85,7 @@ suppressWarnings(library(viridis))
 suppressWarnings(library(RColorBrewer))
 suppressWarnings(library(reshape2))
 suppressWarnings(library(ggcorrplot))
+suppressWarnings(library(DT))
 ```
 
 ```{r}
@@ -217,8 +218,11 @@ for (p in 1:18) {
 
 }
 
-head(brainarea_firing_rateDF)
+brainarea_firing_rateDF <- relocate(brainarea_firing_rateDF, trial_number)
+brainarea_firing_rateDF <- relocate(brainarea_firing_rateDF, session_number)
 
+#head(brainarea_firing_rateDF)
+#datatable(brainarea_firing_rateDF)
 
 # In the correlation matrices:
 #The distribution of each variable is shown on the diagonal.
@@ -296,11 +300,9 @@ for (i in 1:18) {
 colnames(sessionDF) = c("session_number", "trial_number", "mouse_name", "contrast_left", "contrast_right", "total_number_of_neurons", "number_of_unique_brain_area", "number_of_trials", "contrast_difference", "number_of_active_neurons", "total_number_of_spks", "proportion_of_active_neurons", "firing_rate", "feedback_type")
 sessionDF = as.data.frame(sessionDF)
 sessionDF$session_number = as.factor(sessionDF$session_number)
-#sessionDF$trial_number = as.factor(sessionDF$trial_number)
-#sessionDF$contrast_left = as.factor(sessionDF$contrast_left)
-#sessionDF$contrast_right = as.factor(sessionDF$contrast_right)
-#sessionDF$feedback_type = as.factor(sessionDF$feedback_type)
-head(sessionDF)
+
+#head(sessionDF)
+#datatable(sessionDF)
 
 ```
 
@@ -397,7 +399,8 @@ ggplot(sessionDF, aes(x = trial_number, y = firing_rate, colour = session_number
 # Combine both dataframes to one large one
 
 completeDF <- cbind(sessionDF, subset(brainarea_firing_rateDF, select = -c(session_number, trial_number) ))
-head(completeDF)
+#head(completeDF)
+datatable(completeDF)
 
 ```
 
@@ -431,18 +434,13 @@ tempBrainAreaPerMouse[is.na(tempBrainAreaPerMouse)] <- 0
 ggplot(melt(tempBrainAreaPerMouse), aes(x = variable, y = value)) + geom_boxplot(outlier.color="red", outlier.shape=8, outlier.size=2, alpha = 0.2) + xlab("Brain Areas") + ylab("Firing Rate") + ggtitle(paste("Mouse", mouseNameVector[4], "Box Plots of Brain Area Firing Rates"))
 
 
-
 ```
 
 
 ```{r}
-# Create general plot so that we can use clustering to find the specific sessions that we can combine into one dataframe
+# Create general plot so that we can use clustering to find the specific trials that we can combine into one dataframe
 # Do this for different variables (eg. proportion of active neurons, etc)
-# This new dataframe will hold the values that provide information for a better predictie model
-
-# For part 2, combine specific sessions that give us information
-# For example, if session 2 and 19 shows both similar sharp slopes, combine these two dataframes
-
+# This new dataframe will hold the values that provide information for a better predictive model
 
 # Can do kmeans on multiple dimensions aka multiple variables, do 2-7 clusters
 
@@ -464,6 +462,7 @@ colnames(clusterDF)[1] <- "cluster_id"
 
 ```
 
+
 ```{r}
 # Plots demonstrating clusters
 
@@ -480,23 +479,32 @@ clusterDF %>% mutate(cluster = clusterDF.k3$cluster) %>%
   geom_point()
 
 # Which contrast has most effect on firing rate
-clusterDF %>% mutate(cluster = clusterDF.k3$cluster) %>%
-  ggplot(aes(x = contrast_left, y = firing_rate, color = as.factor(cluster))) + 
-  geom_point()
+#clusterDF %>% mutate(cluster = clusterDF.k3$cluster) %>%
+#  ggplot(aes(x = contrast_left, y = firing_rate, color = as.factor(cluster))) + 
+#  geom_point()
 
-clusterDF %>% mutate(cluster = clusterDF.k3$cluster) %>%
-  ggplot(aes(x = contrast_right, y = firing_rate, color = as.factor(cluster))) + 
-  geom_point()
+#clusterDF %>% mutate(cluster = clusterDF.k3$cluster) %>%
+#  ggplot(aes(x = contrast_right, y = firing_rate, color = as.factor(cluster))) + 
+#  geom_point()
 
 
 ```
 
 ```{r}
+
 # Separate the complete dataframe into 3 separate dataframes based on cluster_id
 
 cluster1DF <- completeDF[completeDF$cluster_id == 1,]
+cluster1DF <- cluster1DF[,colSums(is.na(cluster1DF))<nrow(cluster1DF)]
+cluster1DF[is.na(cluster1DF)] <- 0
+
 cluster2DF <- completeDF[completeDF$cluster_id == 2,]
+cluster2DF <- cluster2DF[,colSums(is.na(cluster2DF))<nrow(cluster2DF)]
+cluster2DF[is.na(cluster2DF)] <- 0
+
 cluster3DF <- completeDF[completeDF$cluster_id == 3,]
+cluster3DF <- cluster3DF[,colSums(is.na(cluster3DF))<nrow(cluster3DF)]
+cluster3DF[is.na(cluster3DF)] <- 0
 
 # Correlation matrices for new dataframe clusters
 
@@ -513,11 +521,46 @@ ggcorrplot(round(cor(cluster3DF[, 5:15]), 1), hc.order = TRUE,
 
 
 ```{r}
-# TODO: 
-# for part 2, figure out which variables to include in the model for part 3. 
-# use DT::datatable() to show all dataframe variables, do this for original dataframe and dataframe that we chose for predictive model (this one will have less variables and rows)
 
-# I will use variables: firing_rate, number_of_active_neurons, total_number_of_neurons, number_of_unique_brain_area, contrast_difference. (proportion of active neurons is too similiar to firing rate, and total_number_of_spks is too similar to number of active neurons. )
+# Figure out which variables and their weighting from the specific clusterDF to use for predictive model using PCA
+
+cluster1DF.pca <- cluster1DF[, 5:ncol(cluster1DF)] %>% prcomp(center = TRUE, scale = TRUE)
+cluster2DF.pca <- cluster2DF[, 5:ncol(cluster2DF)] %>% prcomp(center = TRUE, scale = TRUE)
+cluster3DF.pca <- cluster3DF[, 5:ncol(cluster3DF)] %>% prcomp(center = TRUE, scale = TRUE)
+
+cluster1DF.pca$rotation
+summary(cluster1DF.pca)
+
+par(mfrow=c(1,3))
+plot(cluster1DF.pca, type = 'l', main = "Cluster 1 Scree Plot")
+plot(cluster2DF.pca, type = 'l', main = "Cluster 2 Scree Plot")
+plot(cluster3DF.pca, type = 'l', main = "Cluster 3 Scree Plot")
+
+par(mfrow=c(1,3))
+biplot(cluster1DF.pca)
+biplot(cluster2DF.pca)
+biplot(cluster3DF.pca)
+
+
+```
+
+```{r}
+#TODO: Ask if I should include the analysis on brain area (brain_areaDF, etc.) since I do not use the variables 
+
+# Ask how I can determine which cluster to use
+# Ask how I should pick the specific variables to use for regression (should I use the correlation matrix, or pca to make decision)
+
+# Ask if it is okay to drop brain area variables that have all zero/NA columns in the specific clusterDF. (The variable may be used in other clusterDFs)
+
+
+```
+
+
+```{r}
+
+# USe logisitic regression with the variables chosen above to form a prediction model
+
+#Cluster1.logReg <- glm(Species ~ Sepal.Length + Sepal.Width, data = cluster1DF, family = "binomial")
 
 ```
 
@@ -558,23 +601,5 @@ names(session[[2]])
 
 ```
 
-```{r}
 
-session[[5]]$spks[[11]]
-session[[5]]$contrast_left[11]
-session[[5]]$contrast_right[11]
-session[[5]]$feedback_type[11]
 
-length(session[[5]]$spks[[1]])
-table(unlist(session[[5]]$spks[1]))
-
-length(session[[5]]$spks)
-
-#Why is this different
-#length(session[[1]]$spks[[1]])
-#length(session[[1]]$spks[1])
-#if this results in same
-#session[[1]]$spks[[1]]
-#session[[1]]$spks[1]
-
-```
