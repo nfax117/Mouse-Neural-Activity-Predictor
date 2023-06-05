@@ -4,73 +4,12 @@ author: "Nathaniel Faxon 917100572"
 date: "2023-04-18"
 output: html_document
 abstract: |
-  Put the abstract here
+  In this project, we were given 18 sessions of mice brain neural activity, each session recording brain activity related variables as well as the feedback produced from the mice after completing a visual discrimination task. With this information, data was combined into multiple dataframes and important variables were classified. Clustering and classification techniques were used in order to combine similar data across different trials (3 clusters used). Using Principal Component Analysis (PCA), the dataframe dimensions were reduced in order to capture more important features and get rid of noise. Logistic Regression was then applied to form our predictive model.
 ---
 
-1st Task: Understanding Data
-
-1)  Abstract -\> What you did in the project (3-4 sentences)
-
-## Introduction
-
-2)  Introduction
-
--   Questions of interest along with real-world motivation
-
-    -   In the original study, the neural activity of 30,000 neurons in 42 brain regions of mice were analyzed. There were 10 mice analyzed over 39 different sessions. Within each session, visual stimuli were presented to the mice at random, then the reaction of the mice to this stimuli were recorded.
-    -   In this project, we will be analyzing the different trials and recorded neuron spikes in order to make a predictive model.
-
--   Impact of results
-
--   Basic information of data (source, key variables, hypotheses), method, and why.
-
-    -   The data comes from 18 different session of 4 different mice brain neural activity. The four mice that we are studying the neural responses of are Cori, Forssmann, Hench, and Lederberg. More specifically, the first three sessions analyzed Cori, the next four Forssmann, the next four Hench, and the last seven Lederberg. These sessions were taken between 12/14/2016 through 12/11/2017.
-
-    -   Within each session, there were many trials where the activity of the neurons in the mice's visual cortex was recorded based on their decision making when faced with visual stimuli. Their decision making consists of turning the wheel either to the left or right or holding it still. Different variables were recorded for the 4 different mice. 8 variables are recorded each session:
-
-        -   brain_area: The area of the brain where each neuron lives.
-        -   contrast_left: Contrast on the left stimulus. Can take values 0, 0.25, 0.5, 1 (0 indicating the absence of a stimulus).
-        -   contrast_right: Contrast on the right stimulus. Can take values 0, 0.25, 0.5, 1 (0 indicating the absence of a stimulus).
-        -   date_exp: Date of the experiment on the mouse.
-        -   feedback_type: The type of feedback that was administered base on the outcome of the mouse's decision. There are four different cases that can happen:
-            -   When the right contrast is greater than the left contrast: If the mouse turned the wheel to the left, feedback_type = 1. If turned to the right, feedback_type = -1.
-            -   When the left contrast is greater than the right contrast: If the mouse turned the wheel to the right, feedback_type = 1. If turned to the left, feedback_type = -1.
-            -   When the left contrast and right contrast equal 0: If mouse held the wheel still, feedback_type = 1. Otherwise, feedback_type = -1.
-            -   When the left contrast and right contrast are equal and not both 0: There is a 50% chance that feedback_type = 1 or -1.
-        -   mouse_name: Name of the mouse being used in the experiment (trial). Specific to this project, the 4 mice are Cori, Forssmann, Hench, and Lederberg.
-        -   spks: Numbers of spikes of neurons in the visual cortex. Holds many different trials.
-        -   time: Center of the time bins for the spks.
-
--   Existing research and known results
-
-## Exploratory Analysis
-
-3)  Exploratory Analysis
-
--   Basic descriptive statistics (missing, mean, quartiles, \# of observations)
--   Data visualization (features, patterns in data)
-
-## Methodology
-
-4)  Methodology:
-
--   Data Integration: PCA, clustering (improving prediction performance)
--   Predictive Model (GLM, linear regression, time series)
-
-### Data Integration
-
-### Predictive Modeling
-
-5)  Result (prediction performance)
-
-6)  Conclusion, Discussion
-
--   Findings, variable information, drawbacks/disadvantages, next steps
-
-7)  References
-
-
 ```{r}
+# Load the relevant libraries
+
 suppressWarnings(library(tidyverse))
 suppressWarnings(library(ggplot2))
 suppressWarnings(library(knitr))
@@ -89,6 +28,7 @@ suppressWarnings(library(DT))
 ```
 
 ```{r}
+# Load the session information
 
 session=list()
 for(i in 1:18){
@@ -100,9 +40,37 @@ for(i in 1:18){
 
 ```
 
-## Understanding the DataSet
+## Introduction
 
-# Information of each session
+```         
+In the original study, the neural activity of 30,000 neurons in 42 brain regions of mice were analyzed. There were 10 mice analyzed over 39 different sessions. Within each session, visual stimuli were presented to the mice at random, then the reaction of the mice to this stimuli were recorded.
+
+In this project, we will be analyzing the different trials and recorded neuron spikes in order to make a predictive model for feedback type. This research is important because it can help one understand the different brain regions that participate in action selection. Past studies about action selection tended to focus on individual brain region. This study could help explain how other regions like, sensory regions, could also participate in action selection. In the end, this study provides the organizing principles for the distribution of how neurons encode behavioral relevant variables in the brain of a mouse.
+
+The data comes from 18 different session of 4 different mice brain neural activity. The four mice that we are studying the neural responses of are Cori, Forssmann, Hench, and Lederberg. More specifically, the first three sessions analyzed Cori, the next four Forssmann, the next four Hench, and the last seven Lederberg. These sessions were taken between 12/14/2016 through 12/11/2017.
+
+Within each session, there were many trials where the activity of the neurons in the mice's visual cortex was recorded based on their decision making when faced with visual stimuli. Their decision making consists of turning the wheel either to the left or right or holding it still. Different variables were recorded for the 4 different mice. 8 variables are recorded each session:
+
+-   brain_area: The area of the brain where each neuron lives.
+-   contrast_left: Contrast on the left stimulus. Can take values 0, 0.25, 0.5, 1 (0 indicating the absence of a stimulus).
+-   contrast_right: Contrast on the right stimulus. Can take values 0, 0.25, 0.5, 1 (0 indicating the absence of a stimulus).
+-   date_exp: Date of the experiment on the mouse.
+-   feedback_type: The type of feedback that was administered base on the outcome of the mouse's decision. There are four different cases that can happen:
+    -   When the right contrast is greater than the left contrast: If the mouse turned the wheel to the left, feedback_type = 1. If turned to the right, feedback_type = -1.
+    -   When the left contrast is greater than the right contrast: If the mouse turned the wheel to the right, feedback_type = 1. If turned to the left, feedback_type = -1.
+    -   When the left contrast and right contrast equal 0: If mouse held the wheel still, feedback_type = 1. Otherwise, feedback_type = -1.
+    -   When the left contrast and right contrast are equal and not both 0: There is a 50% chance that feedback_type = 1 or -1.
+-   mouse_name: Name of the mouse being used in the experiment (trial). Specific to this project, the 4 mice are Cori, Forssmann, Hench, and Lederberg.
+-   spks: Numbers of spikes of neurons in the visual cortex. Holds many different trials.
+-   time: Center of the time bins for the spks.
+
+From the existing research, neuron patterns within the mice have emerged when responding to their visual discrimination task. Specific areas within their brain are occupied when the neurons encode visual stimuli. But in completing the overall task, all brain areas had pre-stimulus activity with enhanced subcortical and suppressed neocortical activity during engagement.
+```
+
+## Exploratory Analysis
+
+-   Basic descriptive statistics (missing, mean, quartiles, \# of observations)
+-   Data visualization (features, patterns in data)
 
 ```{r}
 
@@ -143,8 +111,6 @@ print(uniqueBrainareasVector)
 
 
 ```
-
-# Parse Into Dataframe
 
 ```{r}
 # Dataframe for the average spks per trial for each session
@@ -306,10 +272,7 @@ sessionDF$session_number = as.factor(sessionDF$session_number)
 
 ```
 
-# Plots
-
 ```{r}
-
 # Box plots of firing rate (or numberofactiveneurons, total num of spikes, or proportion) on feedbacktype
 # Mention how spks and active neurons are different, since there can be multiple spks per neuron
 
@@ -345,7 +308,6 @@ for (i in 1:18) {
 }
 ```
 
-
 ```{r}
 
 # Correlation Matrices for Each Mouse
@@ -357,7 +319,6 @@ for (i in 1:length(mouseNameVector)) {
 }
 
 ```
-
 
 ```{r}
 
@@ -379,7 +340,6 @@ for (i in 1:18) {
 
 ```
 
-
 ```{r}
 # Plots for variables against trials (for session analysis)
 
@@ -394,7 +354,6 @@ ggplot(sessionDF, aes(x = trial_number, y = firing_rate, colour = session_number
 
 ```
 
-
 ```{r}
 # Combine both dataframes to one large one
 
@@ -403,7 +362,6 @@ completeDF <- cbind(sessionDF, subset(brainarea_firing_rateDF, select = -c(sessi
 datatable(completeDF)
 
 ```
-
 
 ```{r}
 # Scatterplot for Mice Brain areas on feedback type per mouse
@@ -422,7 +380,6 @@ for (i in 1:18) {
 
 ```
 
-
 ```{r}
 # Scatterplot of mice brainarea firing rate by trial per mouse
 
@@ -436,13 +393,13 @@ ggplot(melt(tempBrainAreaPerMouse), aes(x = variable, y = value)) + geom_boxplot
 
 ```
 
+## Methodology
+
+-   Data Integration: PCA, clustering (improving prediction performance)
+-   Predictive Model (GLM, linear regression, time series)
 
 ```{r}
-# Create general plot so that we can use clustering to find the specific trials that we can combine into one dataframe
-# Do this for different variables (eg. proportion of active neurons, etc)
-# This new dataframe will hold the values that provide information for a better predictive model
-
-# Can do kmeans on multiple dimensions aka multiple variables, do 2-7 clusters
+# Perform KMeans clustering
 
 clusterDF <- sessionDF[, 4:14]
 clusterDF <- clusterDF[, !names(clusterDF) %in% c("number_of_trials")]
@@ -462,7 +419,6 @@ colnames(clusterDF)[1] <- "cluster_id"
 
 ```
 
-
 ```{r}
 # Plots demonstrating clusters
 
@@ -478,16 +434,6 @@ clusterDF %>% mutate(cluster = clusterDF.k3$cluster) %>%
   ggplot(aes(x = total_number_of_spks, y = firing_rate, color = as.factor(cluster))) + 
   geom_point()
 
-# Which contrast has most effect on firing rate
-#clusterDF %>% mutate(cluster = clusterDF.k3$cluster) %>%
-#  ggplot(aes(x = contrast_left, y = firing_rate, color = as.factor(cluster))) + 
-#  geom_point()
-
-#clusterDF %>% mutate(cluster = clusterDF.k3$cluster) %>%
-#  ggplot(aes(x = contrast_right, y = firing_rate, color = as.factor(cluster))) + 
-#  geom_point()
-
-
 ```
 
 ```{r}
@@ -495,15 +441,15 @@ clusterDF %>% mutate(cluster = clusterDF.k3$cluster) %>%
 # Separate the complete dataframe into 3 separate dataframes based on cluster_id
 
 cluster1DF <- completeDF[completeDF$cluster_id == 1,]
-cluster1DF <- cluster1DF[,colSums(is.na(cluster1DF))<nrow(cluster1DF)]
+cluster1DF <- cluster1DF[, colSums(cluster1DF != 0, na.rm = TRUE) > 0]
 cluster1DF[is.na(cluster1DF)] <- 0
 
 cluster2DF <- completeDF[completeDF$cluster_id == 2,]
-cluster2DF <- cluster2DF[,colSums(is.na(cluster2DF))<nrow(cluster2DF)]
+cluster2DF <- cluster2DF[, colSums(cluster2DF != 0, na.rm = TRUE) > 0]
 cluster2DF[is.na(cluster2DF)] <- 0
 
 cluster3DF <- completeDF[completeDF$cluster_id == 3,]
-cluster3DF <- cluster3DF[,colSums(is.na(cluster3DF))<nrow(cluster3DF)]
+cluster3DF <- cluster3DF[, colSums(cluster3DF != 0, na.rm = TRUE) > 0]
 cluster3DF[is.na(cluster3DF)] <- 0
 
 # Correlation matrices for new dataframe clusters
@@ -519,7 +465,6 @@ ggcorrplot(round(cor(cluster3DF[, 5:15]), 1), hc.order = TRUE,
 
 ```
 
-
 ```{r}
 
 # Figure out which variables and their weighting from the specific clusterDF to use for predictive model using PCA
@@ -528,8 +473,8 @@ cluster1DF.pca <- cluster1DF[, 5:ncol(cluster1DF)] %>% prcomp(center = TRUE, sca
 cluster2DF.pca <- cluster2DF[, 5:ncol(cluster2DF)] %>% prcomp(center = TRUE, scale = TRUE)
 cluster3DF.pca <- cluster3DF[, 5:ncol(cluster3DF)] %>% prcomp(center = TRUE, scale = TRUE)
 
-cluster1DF.pca$rotation
-summary(cluster1DF.pca)
+#cluster1DF.pca$rotation
+#summary(cluster1DF.pca)
 
 par(mfrow=c(1,3))
 plot(cluster1DF.pca, type = 'l', main = "Cluster 1 Scree Plot")
@@ -541,7 +486,6 @@ biplot(cluster1DF.pca)
 biplot(cluster2DF.pca)
 biplot(cluster3DF.pca)
 
-
 ```
 
 ```{r}
@@ -552,18 +496,30 @@ biplot(cluster3DF.pca)
 
 # Ask if it is okay to drop brain area variables that have all zero/NA columns in the specific clusterDF. (The variable may be used in other clusterDFs)
 
+# Ask if we should use more than 3. How do we know how many clusters we should have since we cant plot.
 
 ```
-
 
 ```{r}
 
 # USe logisitic regression with the variables chosen above to form a prediction model
+# Ask how to use the weighted variables from PCA
 
-#Cluster1.logReg <- glm(Species ~ Sepal.Length + Sepal.Width, data = cluster1DF, family = "binomial")
+# First split the data into training and testing groups
+
+
+
+cluster1.logReg <- glm( ~  + , data = cluster1DF, family = "binomial")
 
 ```
 
+5)  Result (prediction performance)
+
+6)  Conclusion, Discussion
+
+-   Findings, variable information, drawbacks/disadvantages, next steps
+
+7)  References
 
 # Extra
 
@@ -600,6 +556,3 @@ names(session[[2]])
 # Create df including all sessions, each session df will have rows as trials, and the columns will be variables of each trial (contrast_left, contrast_right, firing_rate, feedback_type). Use bind to stack each session df.
 
 ```
-
-
-
