@@ -401,112 +401,42 @@ ggplot(melt(tempBrainAreaPerMouse), aes(x = variable, y = value)) + geom_boxplot
 ```{r}
 # Perform KMeans clustering
 
-clusterDF <- sessionDF[, 4:14]
-clusterDF <- clusterDF[, !names(clusterDF) %in% c("number_of_trials")]
-clusterDF <- cbind(seq(1, nrow(clusterDF), by=1), clusterDF)
-colnames(clusterDF)[1] = "id"
+completeDF[is.na(completeDF)] <- 0
 
 # Clustering data for 3 clusters
-clusterDF.k3 <- clusterDF %>% kmeans(3)
-clusterIndicatorVector <- clusterDF.k3$cluster
+completeDF.k3 <- subset(completeDF, select = -c(session_number, trial_number, mouse_name, feedback_type)) %>% kmeans(3)
+clusterIndicatorVector <- completeDF.k3$cluster
 
 # Append the cluster indicator to the dataframes for further analysis
 completeDF <- cbind(clusterIndicatorVector, completeDF)
-clusterDF <- cbind(clusterIndicatorVector, clusterDF)
-
 colnames(completeDF)[1] <- "cluster_id"
-colnames(clusterDF)[1] <- "cluster_id"
 
 ```
 
-```{r}
-# Plots demonstrating clusters
 
-clusterDF %>% mutate(cluster = clusterDF.k3$cluster) %>%
-  ggplot(aes(x = number_of_active_neurons, y = firing_rate, color = as.factor(cluster))) + 
-  geom_point()
-
-clusterDF %>% mutate(cluster = clusterDF.k3$cluster) %>%
-  ggplot(aes(x = number_of_unique_brain_area, y = total_number_of_spks, color = as.factor(cluster))) + 
-  geom_point()
-
-clusterDF %>% mutate(cluster = clusterDF.k3$cluster) %>%
-  ggplot(aes(x = total_number_of_spks, y = firing_rate, color = as.factor(cluster))) + 
-  geom_point()
-
-```
-
-```{r}
-
-# Separate the complete dataframe into 3 separate dataframes based on cluster_id
-
-cluster1DF <- completeDF[completeDF$cluster_id == 1,]
-cluster1DF <- cluster1DF[, colSums(cluster1DF != 0, na.rm = TRUE) > 0]
-cluster1DF[is.na(cluster1DF)] <- 0
-
-cluster2DF <- completeDF[completeDF$cluster_id == 2,]
-cluster2DF <- cluster2DF[, colSums(cluster2DF != 0, na.rm = TRUE) > 0]
-cluster2DF[is.na(cluster2DF)] <- 0
-
-cluster3DF <- completeDF[completeDF$cluster_id == 3,]
-cluster3DF <- cluster3DF[, colSums(cluster3DF != 0, na.rm = TRUE) > 0]
-cluster3DF[is.na(cluster3DF)] <- 0
-
-# Correlation matrices for new dataframe clusters
-
-ggcorrplot(round(cor(cluster1DF[, 5:15]), 1), hc.order = TRUE,
-    type = "lower", lab =TRUE, p.mat = cor_pmat(cluster1DF[, 5:15]))
-
-ggcorrplot(round(cor(cluster2DF[, 5:15]), 1), hc.order = TRUE,
-    type = "lower", lab =TRUE, p.mat = cor_pmat(cluster2DF[, 5:15]))
-
-ggcorrplot(round(cor(cluster3DF[, 5:15]), 1), hc.order = TRUE,
-    type = "lower", lab =TRUE, p.mat = cor_pmat(cluster3DF[, 5:15]))
-
-```
-
-```{r}
-
-# Figure out which variables and their weighting from the specific clusterDF to use for predictive model using PCA
-
-
-cluster1DF.pca <- subset(cluster1DF, select = -c(cluster_id, session_number, trial_number, mouse_name, feedback_type)) %>% prcomp(center = TRUE, scale = TRUE)
-cluster2DF.pca <- subset(cluster2DF, select = -c(cluster_id, session_number, trial_number, mouse_name, feedback_type)) %>% prcomp(center = TRUE, scale = TRUE)
-cluster3DF.pca <- subset(cluster3DF, select = -c(cluster_id, session_number, trial_number, mouse_name, feedback_type)) %>% prcomp(center = TRUE, scale = TRUE)
-
-cluster1DF.pca$rotation
-summary(cluster1DF.pca)
-
-par(mfrow=c(1,3))
-plot(cluster1DF.pca, type = 'l', main = "Cluster 1 Scree Plot")
-plot(cluster2DF.pca, type = 'l', main = "Cluster 2 Scree Plot")
-plot(cluster3DF.pca, type = 'l', main = "Cluster 3 Scree Plot")
-
-par(mfrow=c(1,3))
-biplot(cluster1DF.pca)
-biplot(cluster2DF.pca)
-biplot(cluster3DF.pca)
-
-cluster1.pc <- cluster1DF.pca$x[, 1:8] %>% as.data.frame()
-
-#ls(cluster1DF.pca)
-
-
-```
 
 
 ```{r}
 #TODO: Ask if I should include the analysis on brain area (brain_areaDF, etc.) since I do not use the variables 
+# Use discussion 10 format for the final project format, also shows how to show figures without code
+# Explain variables used in dataframes that are printed
 
-# Ask how I can determine which cluster to use
-# Ask how I should pick the specific variables to use for regression (should I use the correlation matrix, or pca to make decision)
 
-# Ask if it is okay to drop brain area variables that have all zero/NA columns in the specific clusterDF. (The variable may be used in other clusterDFs)
 
-# Ask if we should use more than 3. How do we know how many clusters we should have since we cant plot.
+completeDF.pca <- subset(completeDF, select = -c(session_number, trial_number, mouse_name, feedback_type)) %>% prcomp(center = TRUE, scale = TRUE)
 
+completeDF.pca$rotation
+summary(completeDF.pca)
+
+plot(completeDF.pca, type = 'l', main = "CompleteDF Scree Plot")
+
+
+# TODO STEPS
+# scale the entire completeDF
+# Use logisitic regression on scaled completeDF
 
 ```
+
 
 ```{r}
 
@@ -514,10 +444,19 @@ cluster1.pc <- cluster1DF.pca$x[, 1:8] %>% as.data.frame()
 # Ask how to use the weighted variables from PCA
 
 # First split the data into training and testing groups
+completeDF_test <- slice(completeDF, 1:10)
 
 
+completeDF.logReg <- glm(as.factor(feedback_type) ~ cluster_id + contrast_left + contrast_right + total_number_of_neurons + number_of_unique_brain_area + number_of_trials + contrast_difference + number_of_active_neurons, data = completeDF, family = "binomial")
 
-cluster1.logReg <- glm(feedback_type ~ scale(contrast_left)*cluster1.pc$PC1 , data = cluster1DF, family = "binomial")
+summary(completeDF.logReg)
+
+logRegpredictedModel <- predict(completeDF.logReg, completeDF_test, type = "response")
+
+logRegpredictedModel.cm <- confusionMatrix(logRegpredictedModel$class, completeDF_test$feedback_type)
+logRegpredictedModel.cm
+
+paste("The misclassification error rate is 1 - accuracy =", 1 - logRegpredictedModel.cm$overall['Accuracy'])
 
 ```
 
