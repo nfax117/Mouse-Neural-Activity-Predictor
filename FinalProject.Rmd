@@ -4,7 +4,7 @@ author: "Nathaniel Faxon 917100572"
 date: "2023-04-18"
 output: html_document
 abstract: |
-  In this project, we were given 18 sessions of mice brain neural activity, each session recording brain activity related variables as well as the feedback produced from the mice after completing a visual discrimination task. With this information, data was combined into multiple dataframes and important variables were classified. Clustering and classification techniques were used in order to combine similar data across different trials (3 clusters used). Using Principal Component Analysis (PCA), the dataframe dimensions were reduced in order to capture more important features and get rid of noise. Logistic Regression was then applied to form our predictive model.
+  In this project, we were given 18 sessions of mice brain neural activity, each session recording brain activity related variables as well as the feedback produced from the mice after completing a visual discrimination task. With this information, data was combined into multiple dataframes and important variables were classified. Clustering and classification techniques were used in order to identify similar data across different trials. Logistic Regression was then applied to the complete dataframe that holds our predicting variabes in order to form our predictive model.
 ---
 
 ```{r}
@@ -25,6 +25,13 @@ suppressWarnings(library(RColorBrewer))
 suppressWarnings(library(reshape2))
 suppressWarnings(library(ggcorrplot))
 suppressWarnings(library(DT))
+suppressWarnings(library(glmnet))
+suppressWarnings(library(MASS))
+suppressWarnings(library(caret))
+suppressWarnings(library(class))
+suppressWarnings(library(tree))
+suppressWarnings(library(rpart))
+suppressWarnings(library(e1071))
 ```
 
 ```{r}
@@ -112,91 +119,7 @@ print(uniqueBrainareasVector)
 
 ```
 
-```{r}
-# Dataframe for the average spks per trial for each session
 
-# Function to calculate the average spks per brain area for the specific trial of a session
-firing_rate_brainarea <- function(trialNum, currSession) {
-  
-  spkTrial = currSession$spks[[trialNum]]
-  currBrainArea = currSession$brain_area
-  spkCount = apply(spkTrial, 1, sum)
-  spkAvg = tapply(spkCount, currBrainArea, mean)
-  return(spkAvg)
-  
-}
-
-
-# Function to find average spks per brain area for all trials in a session
-trial_firing_rate_brainarea <- function(sessionNum) {
-  
-  trialLen = length(session[[sessionNum]]$feedback_type)
-  brainareaLen = length(unique(session[[sessionNum]]$brain_area))
-  
-  trialBrainareaSummary = matrix(nrow = trialLen, ncol = brainareaLen + 2)
-  
-  for(q in 1:trialLen) {
-    
-    trialBrainareaSummary[q,] = c(firing_rate_brainarea(q, currSession = session[[sessionNum]]), sessionNum, q)
-    
-  }
-  
-  colnames(trialBrainareaSummary) = c(names(firing_rate_brainarea(q,currSession = session[[sessionNum]])), 'session_number', 'trial_number')
-  
-  trialBrainareaSummary <- as_tibble(trialBrainareaSummary)
-  
-  
-  # Plot the spikes per area in each session against trials
-  colorPalette = brewer.pal(n=brainareaLen, name = 'Paired')
-
-  plot(0~1, col='white',xlim=c(0,trialLen),ylim=c(0.5,2.2), xlab="Trials",ylab="Average Spike Counts", main=paste("Spikes per Area in Session", sessionNum))
-  
-  for(i in 1:brainareaLen){
-    lines(y=trialBrainareaSummary[[i]],x=trialBrainareaSummary$trial_number,col=colorPalette[i],lty=2,lwd=1)
-    lines(smooth.spline(trialBrainareaSummary$trial_number, trialBrainareaSummary[[i]]),col=colorPalette[i],lwd=3)
-  }
-  
-  legend("topright", 
-         legend = colnames(trialBrainareaSummary)[1:brainareaLen], 
-         col = colorPalette, 
-         lty = 1, 
-         cex = 0.8
-  )
-    
-    
-    # Plot the correlation matrix for the brain areas, see if there are relations between brain areas
-    correlationMatrixPlot <- suppressWarnings(chart.Correlation(trialBrainareaSummary[, 3:brainareaLen], histogram = TRUE, pch = 7, alpha = 0.3))
-    correlationMatrixPlot
-    
-  
-  # Return the dataframe of brain areas for one session
-  return(trialBrainareaSummary)
-  
-}
-
-# Use above function to apply to all sessions, bind them together to make one dataframe of all session brainarea spk averages. 
-
-brainarea_firing_rateDF <- data.frame()
-
-for (p in 1:18) {
-  
-  brainarea_firing_rateDF = bind_rows(brainarea_firing_rateDF, trial_firing_rate_brainarea(p))
-
-}
-
-brainarea_firing_rateDF <- relocate(brainarea_firing_rateDF, trial_number)
-brainarea_firing_rateDF <- relocate(brainarea_firing_rateDF, session_number)
-
-#head(brainarea_firing_rateDF)
-#datatable(brainarea_firing_rateDF)
-
-# In the correlation matrices:
-#The distribution of each variable is shown on the diagonal.
-#On the bottom of the diagonal : the bivariate scatter plots with a fitted line are displayed
-#On the top of the diagonal : the value of the correlation plus the significance level as stars
-#Each significance level is associated to a symbol : p-values(0, 0.001, 0.01, 0.05, 0.1, 1) <=> symbols(“***”, “**”, “*”, “.”, " “)
-
-```
 
 ```{r}
 # Dataframe with general statistics across sessions
@@ -268,7 +191,7 @@ sessionDF = as.data.frame(sessionDF)
 sessionDF$session_number = as.factor(sessionDF$session_number)
 
 #head(sessionDF)
-#datatable(sessionDF)
+datatable(sessionDF)
 
 ```
 
@@ -354,111 +277,111 @@ ggplot(sessionDF, aes(x = trial_number, y = firing_rate, colour = session_number
 
 ```
 
-```{r}
-# Combine both dataframes to one large one
 
-completeDF <- cbind(sessionDF, subset(brainarea_firing_rateDF, select = -c(session_number, trial_number) ))
-#head(completeDF)
-datatable(completeDF)
-
-```
-
-```{r}
-# Scatterplot for Mice Brain areas on feedback type per mouse
-
-for (i in 1:18) {
-  
-  tempBrainAreaDF <- completeDF[completeDF$session_number == i, colSums(is.na(completeDF[completeDF$session_number == i,])) == 0]
-  tempBrainAreaDF <- melt(tempBrainAreaDF, id.vars = "feedback_type", measure.vars = colnames(tempBrainAreaDF)[14:length(colnames(tempBrainAreaDF))])
-  
-  
-  tempPlot <- ggplot(tempBrainAreaDF) + geom_boxplot(aes(x = as.factor(feedback_type), y = value, color = variable), outlier.color="red", outlier.shape=8, outlier.size=2, alpha = 0.2) + xlab("Feedback Type") + ylab("Firing Rate") + ggtitle(paste("Session", i, "Box Plot of Brain Area Firing Rate on Feedback Type")) + guides(color = guide_legend(title = "Brain Areas"))
-  
-  print(tempPlot)
-  
-}
-
-```
-
-```{r}
-# Scatterplot of mice brainarea firing rate by trial per mouse
-
-tempBrainAreaPerMouse <- completeDF[completeDF$mouse_name == mouseNameVector[4], ]
-tempBrainAreaPerMouse <- tempBrainAreaPerMouse[,colSums(is.na(tempBrainAreaPerMouse))<nrow(tempBrainAreaPerMouse)]
-tempBrainAreaPerMouse <- tempBrainAreaPerMouse[, 14:length(colnames(tempBrainAreaPerMouse))]
-tempBrainAreaPerMouse[is.na(tempBrainAreaPerMouse)] <- 0
-
-ggplot(melt(tempBrainAreaPerMouse), aes(x = variable, y = value)) + geom_boxplot(outlier.color="red", outlier.shape=8, outlier.size=2, alpha = 0.2) + xlab("Brain Areas") + ylab("Firing Rate") + ggtitle(paste("Mouse", mouseNameVector[4], "Box Plots of Brain Area Firing Rates"))
-
-
-```
 
 ## Methodology
 
 -   Data Integration: PCA, clustering (improving prediction performance)
--   Predictive Model (GLM, linear regression, time series)
 
 ```{r}
 # Perform KMeans clustering
 
-completeDF[is.na(completeDF)] <- 0
+sessionDF[is.na(sessionDF)] <- 0
 
 # Clustering data for 3 clusters
-completeDF.k3 <- subset(completeDF, select = -c(session_number, trial_number, mouse_name, feedback_type)) %>% kmeans(3)
-clusterIndicatorVector <- completeDF.k3$cluster
+sessionDF.k3 <- subset(sessionDF, select = -c(session_number, trial_number, mouse_name, feedback_type)) %>% kmeans(3)
+clusterIndicatorVector <- sessionDF.k3$cluster
 
 # Append the cluster indicator to the dataframes for further analysis
-completeDF <- cbind(clusterIndicatorVector, completeDF)
-colnames(completeDF)[1] <- "cluster_id"
+sessionDF <- cbind(clusterIndicatorVector, sessionDF)
+colnames(sessionDF)[1] <- "cluster_id"
 
 ```
 
-
-
+-   Predictive Model (GLM, linear regression, time series)
 
 ```{r}
-#TODO: Ask if I should include the analysis on brain area (brain_areaDF, etc.) since I do not use the variables 
+# Apply logistic regression to sessionDF
+
+# First split the data into training and testing groups, 20/80 split
+randomSelection <- sample.int(nrow(sessionDF), 1016)
+sessionDF_test <- sessionDF[randomSelection, ]
+sessionDF_train <- sessionDF[-randomSelection, ]
+
+
+# Scale the training and testing data
+sessionDF_test[,5:14] <- scale(sessionDF_test[,5:14])
+sessionDF_test[,1] <- scale(sessionDF_test[,1])
+
+sessionDF_train[,5:14] <- scale(sessionDF_train[,5:14])
+sessionDF_train[,1] <- scale(sessionDF_train[,1])
+  
+
+# logisitic regression on training data
+sessionDF.logreg <- glm(as.factor(feedback_type) ~ cluster_id + contrast_left + contrast_right + total_number_of_neurons + number_of_unique_brain_area + number_of_trials + contrast_difference + number_of_active_neurons + total_number_of_spks + proportion_of_active_neurons + firing_rate, data = sessionDF_train, family = "binomial")
+
+summary(sessionDF.logreg)
+
+logRegpredictedModel <- predict(sessionDF.logreg, sessionDF_test, type = "response")
+
+logRegpredictedModel = ifelse(logRegpredictedModel > 0.5, "-1", "1")
+logRegpredictedModel <- as.factor(logRegpredictedModel)
+
+logRegpredictedModel.cm <- confusionMatrix(logRegpredictedModel, as.factor(sessionDF_test$feedback_type))
+logRegpredictedModel.cm
+
+paste("Accuracy is: ", logRegpredictedModel.cm$overall['Accuracy'])
+
+
+
+# compare model with brain area and without
 # Use discussion 10 format for the final project format, also shows how to show figures without code
 # Explain variables used in dataframes that are printed
 
 
-
-completeDF.pca <- subset(completeDF, select = -c(session_number, trial_number, mouse_name, feedback_type)) %>% prcomp(center = TRUE, scale = TRUE)
-
-completeDF.pca$rotation
-summary(completeDF.pca)
-
-plot(completeDF.pca, type = 'l', main = "CompleteDF Scree Plot")
-
-
-# TODO STEPS
-# scale the entire completeDF
-# Use logisitic regression on scaled completeDF
+# May need more variables for prediction model to improve accuracy
+# Use another model and use table to compare different model accuracies
 
 ```
 
 
 ```{r}
+# Predictive model using Tree-Based Method
 
-# USe logisitic regression with the variables chosen above to form a prediction model
-# Ask how to use the weighted variables from PCA
+treePredictedModel = rpart(formula = as.factor(feedback_type) ~ cluster_id + contrast_left + contrast_right + total_number_of_neurons + number_of_unique_brain_area + number_of_trials + contrast_difference + number_of_active_neurons + total_number_of_spks + proportion_of_active_neurons + firing_rate, data = sessionDF_train)
 
-# First split the data into training and testing groups
-completeDF_test <- slice(completeDF, 1:10)
+predictedFeedbackType.tree = predict(treePredictedModel, newdata = sessionDF_test, type = 'class')
 
+# Confusion Matrix
+treePredictedModel.cm = table(sessionDF_test$feedback_type, predictedFeedbackType.tree)
+treePredictedModel.cm <- confusionMatrix(treePredictedModel.cm)
+treePredictedModel.cm
 
-completeDF.logReg <- glm(as.factor(feedback_type) ~ cluster_id + contrast_left + contrast_right + total_number_of_neurons + number_of_unique_brain_area + number_of_trials + contrast_difference + number_of_active_neurons, data = completeDF, family = "binomial")
-
-summary(completeDF.logReg)
-
-logRegpredictedModel <- predict(completeDF.logReg, completeDF_test, type = "response")
-
-logRegpredictedModel.cm <- confusionMatrix(logRegpredictedModel$class, completeDF_test$feedback_type)
-logRegpredictedModel.cm
-
-paste("The misclassification error rate is 1 - accuracy =", 1 - logRegpredictedModel.cm$overall['Accuracy'])
+paste("Accuracy is: ", treePredictedModel.cm$overall['Accuracy'])
 
 ```
+
+```{r}
+# Predictive Model using Support Vector Machine
+
+SVMPredictedModel = svm(formula = as.factor(feedback_type) ~ cluster_id + contrast_left + contrast_right + total_number_of_neurons + number_of_unique_brain_area + number_of_trials + contrast_difference + number_of_active_neurons + total_number_of_spks + proportion_of_active_neurons + firing_rate,
+                 data = sessionDF_train,
+                 type = 'C-classification',
+                 kernel = 'linear')
+
+# Predicting the Test set results
+predictedFeedbackType.svm = predict(SVMPredictedModel, newdata = sessionDF_test)
+
+# Making the Confusion Matrix
+SVMPredictedModel.cm = table(sessionDF_test$feedback_type, predictedFeedbackType.svm)
+SVMPredictedModel.cm <- confusionMatrix(SVMPredictedModel.cm)
+SVMPredictedModel.cm
+
+paste("Accuracy is: ", SVMPredictedModel.cm$overall['Accuracy'])
+
+```
+
+
 
 5)  Result (prediction performance)
 
