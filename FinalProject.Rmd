@@ -1,13 +1,13 @@
 ---
 title: "STA 141A Final Project: Predictive Model of Mice Neural Activity"
 author: "Nathaniel Faxon 917100572"
-date: "2023-04-18"
+date: "2023-06-12"
 output: html_document
 abstract: |
-  In this project, we were given 18 sessions of mice brain neural activity, each session recording brain activity related variables as well as the feedback produced from the mice after completing a visual discrimination task. With this information, data was combined into multiple dataframes and important variables were classified. Clustering and classification techniques were used in order to identify similar data across different trials. Logistic Regression was then applied to the complete dataframe that holds our predicting variabes in order to form our predictive model.
+  In this project, we were given 18 sessions of mice brain neural activity, each session recording brain activity related variables as well as the feedback produced from the mice after completing a visual discrimination task. With this information, data was combined into one complete dataframe and important variables were classified. Clustering and classification techniques were used in order to identify similar data across different trials. Logistic, Tree-Based, and SVM prediction regression methods were then applied to the complete dataframe that holds our predicting variabes in order to form our predictive model.
 ---
 
-```{r}
+```{r, echo=FALSE, warning=FALSE, results='hide',include = FALSE, message=FALSE}
 # Load the relevant libraries
 
 suppressWarnings(library(tidyverse))
@@ -32,29 +32,18 @@ suppressWarnings(library(class))
 suppressWarnings(library(tree))
 suppressWarnings(library(rpart))
 suppressWarnings(library(e1071))
-```
-
-```{r}
-# Load the session information
-
-session=list()
-for(i in 1:18){
-  session[[i]]=readRDS(paste('./Data/session',i,'.rds',sep=''))
-  #print(session[[i]]$mouse_name)
-  #print(session[[i]]$date_exp)
-  
-}
-
+suppressWarnings(library(magrittr))
+suppressWarnings(library(formattable))
 ```
 
 ## Introduction
 
-```         
+        
 In the original study, the neural activity of 30,000 neurons in 42 brain regions of mice were analyzed. There were 10 mice analyzed over 39 different sessions. Within each session, visual stimuli were presented to the mice at random, then the reaction of the mice to this stimuli were recorded.
 
 In this project, we will be analyzing the different trials and recorded neuron spikes in order to make a predictive model for feedback type. This research is important because it can help one understand the different brain regions that participate in action selection. Past studies about action selection tended to focus on individual brain region. This study could help explain how other regions like, sensory regions, could also participate in action selection. In the end, this study provides the organizing principles for the distribution of how neurons encode behavioral relevant variables in the brain of a mouse.
 
-The data comes from 18 different session of 4 different mice brain neural activity. The four mice that we are studying the neural responses of are Cori, Forssmann, Hench, and Lederberg. More specifically, the first three sessions analyzed Cori, the next four Forssmann, the next four Hench, and the last seven Lederberg. These sessions were taken between 12/14/2016 through 12/11/2017.
+The 18 different session that we will be analyzing comes in the form of RDS files. The data comes from 18 different session of 4 different mice brain neural activity. The four mice that we are studying the neural responses of are Cori, Forssmann, Hench, and Lederberg. More specifically, the first three sessions analyzed Cori, the next four Forssmann, the next four Hench, and the last seven Lederberg. These sessions were taken between 12/14/2016 through 12/11/2017.
 
 Within each session, there were many trials where the activity of the neurons in the mice's visual cortex was recorded based on their decision making when faced with visual stimuli. Their decision making consists of turning the wheel either to the left or right or holding it still. Different variables were recorded for the 4 different mice. 8 variables are recorded each session:
 
@@ -72,14 +61,24 @@ Within each session, there were many trials where the activity of the neurons in
 -   time: Center of the time bins for the spks.
 
 From the existing research, neuron patterns within the mice have emerged when responding to their visual discrimination task. Specific areas within their brain are occupied when the neurons encode visual stimuli. But in completing the overall task, all brain areas had pre-stimulus activity with enhanced subcortical and suppressed neocortical activity during engagement.
+
+
+## Descriptive Analysis
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+# Load the session information
+
+session=list()
+for(i in 1:18){
+  session[[i]]=readRDS(paste('./Data/session',i,'.rds',sep=''))
+  #print(session[[i]]$mouse_name)
+  #print(session[[i]]$date_exp)
+  
+}
+
 ```
 
-## Exploratory Analysis
-
--   Basic descriptive statistics (missing, mean, quartiles, \# of observations)
--   Data visualization (features, patterns in data)
-
-```{r}
+```{r, echo=FALSE, warning=FALSE, results='hide',include = FALSE, message=FALSE}
 
 # Get the variables recorded within this session
 print(ls(session[[1]])) # or names(session[[1]]))
@@ -119,9 +118,7 @@ print(uniqueBrainareasVector)
 
 ```
 
-
-
-```{r}
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
 # Dataframe with general statistics across sessions
 
 sessionDF <- data.frame()
@@ -160,7 +157,6 @@ for (i in 1:18) {
     
   }
   
-
   # Append data together using cbind
   tempSession = cbind(rep(i,length(session[[i]]$contrast_left)),
                        seq(1, length(session[[i]]$spks)),
@@ -190,38 +186,48 @@ colnames(sessionDF) = c("session_number", "trial_number", "mouse_name", "contras
 sessionDF = as.data.frame(sessionDF)
 sessionDF$session_number = as.factor(sessionDF$session_number)
 
-#head(sessionDF)
 datatable(sessionDF)
 
 ```
 
-```{r}
+The above data table contains 15 variables. We have some given variables that were described above: mouse_name, contrast_left, contrast_right, and feedback_type. We also have some general variables, session_number and trial_number which tells the session as well as trial within that session that the experiment was run. The remaining variables measure the performance and offers describing features within each trial of each session:
+
+-   total_number_of_neurons: Total number of neurons specific to the session.
+-   number_of_unique_brain_area: The number of brain areas that experience neural spikes, unique to the session.
+-   number_of_trials: Number of trials/experiments performed during the specific session.
+-   contrast_difference: Absolute difference between the left contrast and right contrast.
+-   number_of_active_neurons: Total number of neurons that experienced at least one spike during the trial.
+-   total_number_of_spks: Total number of spikes that occurred during the trial (some neurons gave off multiple spikes when faced with the visual stimuli).
+-   proportion_of_active_neurons: The proportion of neurons that that experienced at least one spike during the trial (number_of_active_neurons / total_number_of_neurons).
+-   firing_rate: The rate at which the spikes in the neurons were fired specific to the trial. This is the total number of spikes that were not equal to 0, divided by the total number of spikes.
+
+These variables were used because they provided information that captures differences across trials of general brain activity. It gives a general scope of how neurons in general, and the rate and amount at which they fire spikes can lead to how a mouse may make a decision when faced with the stimuli.
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
 # Box plots of firing rate (or numberofactiveneurons, total num of spikes, or proportion) on feedbacktype
-# Mention how spks and active neurons are different, since there can be multiple spks per neuron
-
-
-# Box Plots
-
 
 # Firing Rate on Feedback Type
-firingRate_by_feedback_boxPlot <- ggplot(sessionDF, aes(x = as.factor(feedback_type), y = firing_rate)) + geom_boxplot(outlier.color="red", outlier.shape=8, outlier.size=2, alpha = 0.2) + xlab("Feedback Type") + ylab("Firing Rate") + ggtitle("Box Plot of Firing Rate on Feedback Type") + theme(legend.position="none")
+firingRate_by_feedback_boxPlot <- ggplot(sessionDF, aes(x = as.factor(feedback_type), y = firing_rate)) + geom_boxplot(outlier.color="red", outlier.shape=8, outlier.size=2, alpha = 0.2) + xlab("Feedback Type") + ylab("Firing Rate") + theme(legend.position="none")
 
 # Number of Active Neurons on Feedback Type
-numActiveNeurons_by_feedback_boxPlot <- ggplot(sessionDF, aes(x = as.factor(feedback_type), y = number_of_active_neurons)) + geom_boxplot(outlier.color="red", outlier.shape=8, outlier.size=2, alpha = 0.2) + xlab("Feedback Type") + ylab("Number of Active Neurons") + ggtitle("Box Plot of Number of Active Neurons on Feedback Type") + theme(legend.position="none")
+numActiveNeurons_by_feedback_boxPlot <- ggplot(sessionDF, aes(x = as.factor(feedback_type), y = number_of_active_neurons)) + geom_boxplot(outlier.color="red", outlier.shape=8, outlier.size=2, alpha = 0.2) + xlab("Feedback Type") + ylab("Number of Active Neurons") + theme(legend.position="none")
 
 # Total Number of Spikes on Feedback Type
-totalNumSpikes_by_feedback_boxPlot <- ggplot(sessionDF, aes(x = as.factor(feedback_type), y = total_number_of_spks)) + geom_boxplot(outlier.color="red", outlier.shape=8, outlier.size=2, alpha = 0.2) + xlab("Feedback Type") + ylab("Total Number of Spikes") + ggtitle("Box Plot of Total Number of Spikes on Feedback Type") + theme(legend.position="none")
+totalNumSpikes_by_feedback_boxPlot <- ggplot(sessionDF, aes(x = as.factor(feedback_type), y = total_number_of_spks)) + geom_boxplot(outlier.color="red", outlier.shape=8, outlier.size=2, alpha = 0.2) + xlab("Feedback Type") + ylab("Total Number of Spikes") + theme(legend.position="none")
 
 # Proportion of Active Neurons on Feedback Type
-proportionActiveNeurons_by_feedback_boxPlot <- ggplot(sessionDF, aes(x = as.factor(feedback_type), y = proportion_of_active_neurons)) + geom_boxplot(outlier.color="red", outlier.shape=8, outlier.size=2, alpha = 0.2) + xlab("Feedback Type") + ylab("Proportion of Active Neurons") + ggtitle("Box Plot of Proportion of Active Neurons on Feedback Type") + theme(legend.position="none")
+proportionActiveNeurons_by_feedback_boxPlot <- ggplot(sessionDF, aes(x = as.factor(feedback_type), y = proportion_of_active_neurons)) + geom_boxplot(outlier.color="red", outlier.shape=8, outlier.size=2, alpha = 0.2) + xlab("Feedback Type") + ylab("Proportion of Active Neurons") + theme(legend.position="none")
 
 
-grid.arrange(firingRate_by_feedback_boxPlot, proportionActiveNeurons_by_feedback_boxPlot, numActiveNeurons_by_feedback_boxPlot, totalNumSpikes_by_feedback_boxPlot, nrow = 2, ncol = 2)
+grid.arrange(firingRate_by_feedback_boxPlot, proportionActiveNeurons_by_feedback_boxPlot, numActiveNeurons_by_feedback_boxPlot, totalNumSpikes_by_feedback_boxPlot, nrow = 2, ncol = 2, top = textGrob(paste("Box Plots of Feedback Type Across Sessions")))
 
 
 ```
 
-```{r}
+The above box plots provide information about the effect the four main describing variables have with the variable that we are trying to predict, feedback_type. The box plot of firing rate against feedback type shows that on average, a firing rate of about 0.03 results in feedback type of -1 and 0.034 results in 1. In the box plot with proportion of active neurons, on average a proportion of 0.029 results in feedback type of -1 and 0.031 results in 1. In the box plot with number of active neurons, on average about 1100 active neurons results in feedback type of -1 and 1200 results in 1. In the box plot with total number of spikes, on average about 1200 total spikes results in feedback type of -1 and 1300 results in 1. For all the box plots, there seem to be many outliers with larger values. Also, a feedback type of -1 seems to have a uniform structure, while a feedback type of 1 seems to have a right skew for variables firing rate and proportion of active neurons.
+
+
+```{r, echo=FALSE, warning=FALSE,include = FALSE, message=FALSE}
 
 # Correlation Matrices for each Session
 for (i in 1:18) {
@@ -231,7 +237,7 @@ for (i in 1:18) {
 }
 ```
 
-```{r}
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
 
 # Correlation Matrices for Each Mouse
 mouseNameVector <- c('Cori', 'Forssmann', 'Hench', 'Lederberg')
@@ -243,19 +249,25 @@ for (i in 1:length(mouseNameVector)) {
 
 ```
 
-```{r}
+The above correlation matrices for each mice provide us with information about how the variables interact with each other, specific to each mouse, across all sessions. Mice Cori and Forssmann both have strong positive interactions between variables number_of_active_neurons and total_number_of_spks, and proportion_of_active_neurons and firing_rate. Mice Hench and Lederberg have more strong, positive variable interactions: number_of_active_neurons & total_number_of_spks, number_of_active_neurons & proportion_of_active_neurons, number_of_active_neurons & firing_rate, total_number_of_spks & proportion_of_active_neurons, total_number_of_spks & firing_rate, proportion_of_active_neurons & firing_rate.
+
+
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
 
 # Plots for variables against trials (for individual session analysis)
 
-for (i in 1:18) {
+sessionsToBePlotted <- c(3, 7) # Can change these numbers to plot scatterplots for different sessions.
+
+for (i in sessionsToBePlotted) {
  
-  plot1 <- ggplot(sessionDF[sessionDF$session_number == i,], aes(x = trial_number, y = number_of_active_neurons)) + geom_point() + geom_smooth(formula = y ~ x, method="lm") + ggtitle("Number of Active Neurons Against Trials") + labs(y = "Number of Active Neurons", x = "Trials")
+  plot1 <- ggplot(sessionDF[sessionDF$session_number == i,], aes(x = trial_number, y = number_of_active_neurons)) + geom_point() + geom_smooth(formula = y ~ x, method="lm") + ggtitle("Number of Active Neurons x Trials") + labs(y = "Number of Active Neurons", x = "Trials")
   
-  plot2 <- ggplot(sessionDF[sessionDF$session_number == i,], aes(x = trial_number, y = total_number_of_spks)) + geom_point() + geom_smooth(formula = y ~ x, method="lm") + ggtitle("Total Number of Spikes Against Trials") + labs(y = "Total Number of Spikes", x = "Trials")
+  plot2 <- ggplot(sessionDF[sessionDF$session_number == i,], aes(x = trial_number, y = total_number_of_spks)) + geom_point() + geom_smooth(formula = y ~ x, method="lm") + ggtitle("Total Number of Spikes x Trials") + labs(y = "Total Number of Spikes", x = "Trials")
   
-  plot3 <- ggplot(sessionDF[sessionDF$session_number == i,], aes(x = trial_number, y = proportion_of_active_neurons)) + geom_point() + geom_smooth(formula = y ~ x, method="lm") + ggtitle("Proportion of Active Neurons Against Trials") + labs(y = "Proportion of Active Neurons", x = "Trials")
+  plot3 <- ggplot(sessionDF[sessionDF$session_number == i,], aes(x = trial_number, y = proportion_of_active_neurons)) + geom_point() + geom_smooth(formula = y ~ x, method="lm") + ggtitle("Prop of Active Neurons x Trials") + labs(y = "Proportion of Active Neurons", x = "Trials")
   
-  plot4 <- ggplot(sessionDF[sessionDF$session_number == i,], aes(x = trial_number, y = firing_rate)) + geom_point() + geom_smooth(formula = y ~ x, method="lm") + ggtitle("Firing Rate Against Trials") + labs(y = "Firing Rate", x = "Trials")
+  plot4 <- ggplot(sessionDF[sessionDF$session_number == i,], aes(x = trial_number, y = firing_rate)) + geom_point() + geom_smooth(formula = y ~ x, method="lm") + ggtitle("Firing Rate x Trials") + labs(y = "Firing Rate", x = "Trials")
   
   grid.arrange(plot1, plot2, plot3, plot4, nrow = 2, ncol = 2, top = textGrob(paste("Session", i, "Scatterplots")))
    
@@ -263,7 +275,10 @@ for (i in 1:18) {
 
 ```
 
-```{r}
+The above are scatter plots of the four main describing variables plotted against trials for a specific session. We will be looking at two different sessions, session 3 and session 7, so that there are not 18 x 4 different plots (the code provided was constructed to produce all the plots for the 18 different sessions). Throughout the different 18 sessions, different linear associations were seen. These varied from positive to negative, and weak to strong linear associations. Looking session 3, it can be seen that the variables share a negative, semi-strong linear association. But when looking at session 7, there seems to be a positive, semi-strong linear association. It is important to remember that each session contains different variables, which most likely is the reason to why there are different relationships. For example, the mouse Cori was used in session 3 and the mouse Forssmann was used in session 7, and since these mice are different, they may perform differently in experiments.
+
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
 # Plots for variables against trials (for session analysis)
 
 ggplot(sessionDF, aes(x = trial_number, y = number_of_active_neurons, colour = session_number)) + geom_point() + geom_smooth(method = "loess", formula = y ~ x) + ggtitle("Scatterplot of Number of Active Neurons Against Trials") + labs(y = "Number of Active Neurons", x = "Trials")
@@ -277,30 +292,38 @@ ggplot(sessionDF, aes(x = trial_number, y = firing_rate, colour = session_number
 
 ```
 
+Above are scatter plots of the same four main describing variables plotted against trials for all of the sessions. This form of plotting allows for us to view the changes across all of the sessions. From this view, we can see that there are not always simple positive or negative linear relationships, different sessions provide different data. From this graph we can see that the number of active neurons, total number of spikes, proportion of active neurons, and firing rate seem to decrease across trials (except for session 13).
 
 
-## Methodology
+## Data Integration
 
--   Data Integration: PCA, clustering (improving prediction performance)
+In order to combine data across all the trials, the K-Means clustering method was used. Three clusters were made using the complete data frame variables except for variables that do not provide much information or that we are wanting to predict: session_number, trial_number, mouse_name, number_of_trials, and feedback_type. This way we could group the shared patterns between all the informing variables, across all trials. Performing K-Means clustering resulted in a vector containing which trials belonged to which cluster. This vector was then appended to the original complete data frame so that this new column could be used in our predictive modeling methods. The updated data frame is shown below, with a new variable cluster_id. This variable takes the values 1-3, identifying which cluster they belong to.
 
-```{r}
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
 # Perform KMeans clustering
 
 sessionDF[is.na(sessionDF)] <- 0
 
 # Clustering data for 3 clusters
-sessionDF.k3 <- subset(sessionDF, select = -c(session_number, trial_number, mouse_name, feedback_type)) %>% kmeans(3)
+sessionDF.k3 <- subset(sessionDF, select = -c(session_number, trial_number, mouse_name, number_of_trials, feedback_type)) %>% kmeans(3)
 clusterIndicatorVector <- sessionDF.k3$cluster
 
 # Append the cluster indicator to the dataframes for further analysis
 sessionDF <- cbind(clusterIndicatorVector, sessionDF)
 colnames(sessionDF)[1] <- "cluster_id"
 
+datatable(sessionDF)
+
 ```
 
--   Predictive Model (GLM, linear regression, time series)
+## Predictive Modeling
 
-```{r}
+For predictive modeling, three different methods were used: Logistic Regression, Tree-Based Regression, and Support Vector Machine Regression. Before applying these methods, the data was split into training and testing sets by a 80%/20% split. In order to do this split, 1016 numbers were randomly sampled (1016 is 20% of all trials within the data frame) and then the test set was derived from the rows that were at the positions of the 1016 numbers. The remaining were made into the training sets. The training and testing data were then scaled since the variables in the data set vary in numerical size. For the different methods, these were the only variable used to predict feedback type: cluster_id, contrast_left, contrast_right, total_number_of_neurons, number_of_unique_brain_area, contrast_difference, number_of_active_neurons, total_number_of_spks, proportion_of_active_neurons, firing_rate.
+
+Following the release of the test data, the training set it just the complete data frame holding all the recorded trials across all 18 sessions, and the test set is the set provided to us.
+
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
 # Apply logistic regression to sessionDF
 
 # First split the data into training and testing groups, 20/80 split
@@ -317,54 +340,52 @@ sessionDF_train[,5:14] <- scale(sessionDF_train[,5:14])
 sessionDF_train[,1] <- scale(sessionDF_train[,1])
   
 
-# logisitic regression on training data
-sessionDF.logreg <- glm(as.factor(feedback_type) ~ cluster_id + contrast_left + contrast_right + total_number_of_neurons + number_of_unique_brain_area + number_of_trials + contrast_difference + number_of_active_neurons + total_number_of_spks + proportion_of_active_neurons + firing_rate, data = sessionDF_train, family = "binomial")
-
-summary(sessionDF.logreg)
+# logistic regression on training data
+sessionDF.logreg <- glm(as.factor(feedback_type) ~ cluster_id + contrast_left + contrast_right + total_number_of_neurons + number_of_unique_brain_area + contrast_difference + number_of_active_neurons + total_number_of_spks + proportion_of_active_neurons + firing_rate, data = sessionDF_train, family = "binomial")
 
 logRegpredictedModel <- predict(sessionDF.logreg, sessionDF_test, type = "response")
 
 logRegpredictedModel = ifelse(logRegpredictedModel > 0.5, "-1", "1")
 logRegpredictedModel <- as.factor(logRegpredictedModel)
 
+
 logRegpredictedModel.cm <- confusionMatrix(logRegpredictedModel, as.factor(sessionDF_test$feedback_type))
-logRegpredictedModel.cm
+logRegpredictedModel.cm$table
 
-paste("Accuracy is: ", logRegpredictedModel.cm$overall['Accuracy'])
+logRegpredictedModel.cm.precision <- sum(logRegpredictedModel == 1 & sessionDF_test == 1) / sum(logRegpredictedModel == 1)
 
+logRegpredictedModel.cm.recall <- sum(logRegpredictedModel == 1 & sessionDF_test == 1) / sum(sessionDF_test == 1)
 
+logRegpredictedModel.cm.f1 <- 2 * logRegpredictedModel.cm.precision * logRegpredictedModel.cm.recall / (logRegpredictedModel.cm.precision + logRegpredictedModel.cm.recall)
 
-# compare model with brain area and without
-# Use discussion 10 format for the final project format, also shows how to show figures without code
-# Explain variables used in dataframes that are printed
-
-
-# May need more variables for prediction model to improve accuracy
-# Use another model and use table to compare different model accuracies
 
 ```
 
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+# Predictive Model using Tree-Based Method
 
-```{r}
-# Predictive model using Tree-Based Method
+treePredictedModel2 <- tree(as.factor(feedback_type) ~ cluster_id + contrast_left + contrast_right + total_number_of_neurons + number_of_unique_brain_area + contrast_difference + number_of_active_neurons + total_number_of_spks + proportion_of_active_neurons + firing_rate, data = sessionDF_train)
 
-treePredictedModel = rpart(formula = as.factor(feedback_type) ~ cluster_id + contrast_left + contrast_right + total_number_of_neurons + number_of_unique_brain_area + number_of_trials + contrast_difference + number_of_active_neurons + total_number_of_spks + proportion_of_active_neurons + firing_rate, data = sessionDF_train)
 
-predictedFeedbackType.tree = predict(treePredictedModel, newdata = sessionDF_test, type = 'class')
+predictedFeedbackType.tree2 <- predict(treePredictedModel2, newdata = sessionDF_test, type = 'class')
 
-# Confusion Matrix
-treePredictedModel.cm = table(sessionDF_test$feedback_type, predictedFeedbackType.tree)
-treePredictedModel.cm <- confusionMatrix(treePredictedModel.cm)
-treePredictedModel.cm
+treePredictedModel2.cm <- table(sessionDF_test$feedback_type, predictedFeedbackType.tree2)
 
-paste("Accuracy is: ", treePredictedModel.cm$overall['Accuracy'])
+treePredictedModel2.cm <- confusionMatrix(treePredictedModel2.cm)
+treePredictedModel2.cm$table
+
+treePredictedModel2.cm.precision <- sum(predictedFeedbackType.tree2 == 1 & sessionDF_test == 1) / sum(predictedFeedbackType.tree2 == 1)
+
+treePredictedModel2.cm.recall <- sum(predictedFeedbackType.tree2 == 1 & sessionDF_test == 1) / sum(sessionDF_test == 1)
+
+treePredictedModel2.cm.f1 <- 2 * treePredictedModel2.cm.precision * treePredictedModel2.cm.recall / (treePredictedModel2.cm.precision + treePredictedModel2.cm.recall)
 
 ```
 
-```{r}
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
 # Predictive Model using Support Vector Machine
 
-SVMPredictedModel = svm(formula = as.factor(feedback_type) ~ cluster_id + contrast_left + contrast_right + total_number_of_neurons + number_of_unique_brain_area + number_of_trials + contrast_difference + number_of_active_neurons + total_number_of_spks + proportion_of_active_neurons + firing_rate,
+SVMPredictedModel = svm(formula = as.factor(feedback_type) ~ cluster_id + contrast_left + contrast_right + total_number_of_neurons + number_of_unique_brain_area + contrast_difference + number_of_active_neurons + total_number_of_spks + proportion_of_active_neurons + firing_rate,
                  data = sessionDF_train,
                  type = 'C-classification',
                  kernel = 'linear')
@@ -374,55 +395,71 @@ predictedFeedbackType.svm = predict(SVMPredictedModel, newdata = sessionDF_test)
 
 # Making the Confusion Matrix
 SVMPredictedModel.cm = table(sessionDF_test$feedback_type, predictedFeedbackType.svm)
-SVMPredictedModel.cm <- confusionMatrix(SVMPredictedModel.cm)
-SVMPredictedModel.cm
 
-paste("Accuracy is: ", SVMPredictedModel.cm$overall['Accuracy'])
+SVMPredictedModel.cm <- confusionMatrix(SVMPredictedModel.cm)
+SVMPredictedModel.cm$table
+
+SVMPredictedModel.cm.precision <- sum(predictedFeedbackType.svm == 1 & sessionDF_test == 1) / sum(predictedFeedbackType.svm == 1)
+
+SVMPredictedModel.cm.recall <- sum(predictedFeedbackType.svm == 1 & sessionDF_test == 1) / sum(sessionDF_test == 1)
+
+SVMPredictedModel.cm.f1 <- 2 * SVMPredictedModel.cm.precision * SVMPredictedModel.cm.recall / (SVMPredictedModel.cm.precision + SVMPredictedModel.cm.recall)
 
 ```
 
 
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+# Create table containing the different accuracies and predictive model methods
 
-5)  Result (prediction performance)
+modelAccuraciesTable <- data.frame(v1 = c(round(logRegpredictedModel.cm$overall['Accuracy'], digits = 3), logRegpredictedModel.cm.precision, logRegpredictedModel.cm.recall, logRegpredictedModel.cm.f1),
+                                   v2 = c(round(treePredictedModel2.cm$overall['Accuracy'], digits = 3), treePredictedModel2.cm.precision, treePredictedModel2.cm.recall, treePredictedModel2.cm.f1),
+                                   v3 = c(round(SVMPredictedModel.cm$overall['Accuracy'], digits = 3), SVMPredictedModel.cm.precision, SVMPredictedModel.cm.recall, SVMPredictedModel.cm.f1))
 
-6)  Conclusion, Discussion
+modelAccuraciesTable <- data.frame(lapply(modelAccuraciesTable, function(x) if(is.numeric(x)) round(x, 3) else x))
 
--   Findings, variable information, drawbacks/disadvantages, next steps
+colnames(modelAccuraciesTable) <- c("Logistic", "Tree-Based", "SVM")
+rownames(modelAccuraciesTable) <- c("Accuracy", "Precision", "Recall", "F1-Score")
 
-7)  References
+datatable(modelAccuraciesTable)
 
-# Extra
+```
+
+The above table displays the different performance metrics associated with each type of predictive regression method. The precision measures the proportion of correctly predicted feedback = 1 out of all instances predicted as feedback = 1. The recall measures the proportion of correctly predicted feedback = 1 out of all actual feedback = 1. The F1-Score combines both the recall and precision metrics to form a balanced measure of both the false positives and false negatives.
+
+Logistic regression produced the worst accuracy and had the lowest performance overall. This model was only able to correctly predict feedback type about 27.4% of the time and had very low precision, recall, and F1-Score percentages.
+
+This is the reason why Tree-Based and SVM regression was used, to see if the model could be improved. 
+
+Both SVM and Tree-Based regression performed the same. They had good accuracies of about 73.4%, with high percentages of precision, recall, and F1-Score. These models were able make predictions much better than logistic regression.
+
+
+## Conclusion/Discussion
+
+The primary objective was to build a model that can predict the feedback type of a mouse, at each trial, using the neural activity data and contrasts. This was able to be done after using clustering and classification techniques. A logistic regression predictive model was not able to accurately predict the feedback type given the variables that were provided and derived from the data. This led to the usage of a Support Vector Machine and Tree-Based predictive model, which performed very similarly to each other, and was able to predict the feedback type correctly about 73.4% of the time. These two models were the best at classification in the scope of this project and mice neural activities. 
+
+Some drawbacks and disadvantages of these predictive models were the variables that were used. While these variables were able to capture information specific to the trial's neural activity, they were not able to bring information about the specific brain areas that were being activated. Certain brain areas are responsible for a mouse triggering actions, or making decisions. If one could completely understand which brain areas are responsible for which thoughts, deriving variables around brain area firing rates could possibly provide a more accurate prediction model.
+
+Moving forward, future studies should incorporate a way to include patterns of brain areas, understanding which brain areas had spikes can be key in determining what makes a mouse make these decisions. The brain of the mouse and the different areas need to be studied so that one can understand which areas are responsible for which thoughts or actions. This would allow for predictive models in the future to be able to mimic an actual mouse brain's decision choice when faced with visual stimuli.
+
+
+------------------------------------------------------------------------
+
+## Reference
+
+Steinmetz, N.A., Zatka-Haas, P., Carandini, M. et al. Distributed coding of choice, action and engagement across the mouse brain. Nature 576, 266–273 (2019). https://doi.org/10.1038/s41586-019-1787-x
+
+------------------------------------------------------------------------
+
+## Appendix {.unnumbered}
+
+```{=tex}
+\begin{center} Appendix: R Script \end{center}
+```
+```{r, ref.label=knitr::all_labels(),echo=TRUE,eval=FALSE}
+```
+
+## Session Info
 
 ```{r}
-
-dat <- session[[1]]
-
-#session[[1]]$brain_area
-
-unique(dat$brain_area)
-
-i_trial = 12;
-i_session = 1;
-
-dim(session[[i_session]]$spks[[i_trial]])
-
-length(session[[i_session]]$feedback_type)
-
-apply(session[[i_session]]$spks[[i_trial]], 2, sum)
-
-names(session[[2]])
-
-#Use different spks trials to make predictive models (logistic regression will work, show some linear or svm)
-#session[[i_session]]$spks[[i_trial]]
-#to predict:
-#session[[i_session]]$feedback_type[i_trial]
-
-# LOOK AT COURSE PROJECT DESCRIPTION .RMD FOR VARIABLE EXPLORATION
-
-#Ask if we are using the trials of spks in combination with other recorded variables (eg. brain_area, contrast_left, contrast_right) to predict the feedback_type. Yes
-
-#Predict the feedback_type per trial, not session
-
-# Create df including all sessions, each session df will have rows as trials, and the columns will be variables of each trial (contrast_left, contrast_right, firing_rate, feedback_type). Use bind to stack each session df.
-
+sessionInfo()
 ```

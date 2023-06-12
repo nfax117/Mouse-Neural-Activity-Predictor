@@ -206,3 +206,57 @@ biplot(cluster3DF.pca)
 
 #ls(cluster1DF.pca)
 
+
+#####################
+
+
+# Predictive model using Tree-Based Method
+
+treePredictedModel = rpart(formula = as.factor(feedback_type) ~ cluster_id + contrast_left + contrast_right + total_number_of_neurons + number_of_unique_brain_area + number_of_trials + contrast_difference + number_of_active_neurons + total_number_of_spks + proportion_of_active_neurons + firing_rate, data = sessionDF_train)
+
+predictedFeedbackType.tree = predict(treePredictedModel, newdata = sessionDF_test, type = 'class')
+
+# Confusion Matrix
+treePredictedModel.cm = table(sessionDF_test$feedback_type, predictedFeedbackType.tree)
+treePredictedModel.cm <- confusionMatrix(treePredictedModel.cm)
+treePredictedModel.cm
+
+paste("Accuracy is: ", treePredictedModel.cm$overall['Accuracy'])
+
+####################
+
+# Predictive Model using Tree-Based Method with Pruning
+treePredictedModel2.cv <- cv.tree(treePredictedModel2);
+
+best_size = treePredictedModel2.cv$size[which.min(treePredictedModel2.cv$dev)];
+
+treePredictedModel2.pruned = prune.tree(treePredictedModel2, best = best_size)
+
+predictedFeedbackType.tree2pruned <- predict(treePredictedModel2.pruned, newdata = sessionDF_test, type = 'class')
+
+treePredictedModel2pruned.cm <- table(sessionDF_test$feedback_type, predictedFeedbackType.tree2)
+treePredictedModel2pruned.cm <- confusionMatrix(treePredictedModel2pruned.cm)
+treePredictedModel2pruned.cm
+
+################### EXTRA
+
+
+dat <- session[[1]]
+
+#session[[1]]$brain_area
+
+unique(dat$brain_area)
+
+i_trial = 12;
+i_session = 1;
+
+dim(session[[i_session]]$spks[[i_trial]])
+
+length(session[[i_session]]$feedback_type)
+
+apply(session[[i_session]]$spks[[i_trial]], 2, sum)
+
+names(session[[2]])
+
+
+
