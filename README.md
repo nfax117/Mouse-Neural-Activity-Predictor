@@ -1,2 +1,4 @@
 # Mouse-Neural-Activity-Predictor
 The primary objective of this project is to build a predictive model to predict the outcome (i.e., feedback type) of each trial using the neural activity data (i.e., spike trains in spks), along with the stimuli (the left and right contrasts) from 4 different mice.
+
+In this project, we were given 18 sessions of mice brain neural activity, each session recording brain activity related variables as well as the feedback produced from the mice after completing a visual discrimination task. With this information, data was combined into one complete dataframe and important variables were classified. Clustering and classification techniques were used in order to identify similar data across different trials. Logistic, Tree-Based, and SVM prediction regression methods were then applied to the complete dataframe that holds our predicting variabes in order to form our predictive model.
