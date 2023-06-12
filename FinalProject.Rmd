@@ -34,6 +34,9 @@ suppressWarnings(library(rpart))
 suppressWarnings(library(e1071))
 suppressWarnings(library(magrittr))
 suppressWarnings(library(formattable))
+
+# Set seed
+set.seed(777) 
 ```
 
 ## Introduction
@@ -320,8 +323,6 @@ datatable(sessionDF)
 
 For predictive modeling, three different methods were used: Logistic Regression, Tree-Based Regression, and Support Vector Machine Regression. Before applying these methods, the data was split into training and testing sets by a 80%/20% split. In order to do this split, 1016 numbers were randomly sampled (1016 is 20% of all trials within the data frame) and then the test set was derived from the rows that were at the positions of the 1016 numbers. The remaining were made into the training sets. The training and testing data were then scaled since the variables in the data set vary in numerical size. For the different methods, these were the only variable used to predict feedback type: cluster_id, contrast_left, contrast_right, total_number_of_neurons, number_of_unique_brain_area, contrast_difference, number_of_active_neurons, total_number_of_spks, proportion_of_active_neurons, firing_rate.
 
-Following the release of the test data, the training set it just the complete data frame holding all the recorded trials across all 18 sessions, and the test set is the set provided to us.
-
 
 ```{r, echo=FALSE, warning=FALSE, message=FALSE}
 # Apply logistic regression to sessionDF
@@ -350,11 +351,11 @@ logRegpredictedModel <- as.factor(logRegpredictedModel)
 
 
 logRegpredictedModel.cm <- confusionMatrix(logRegpredictedModel, as.factor(sessionDF_test$feedback_type))
-logRegpredictedModel.cm$table
+#logRegpredictedModel.cm$table
 
-logRegpredictedModel.cm.precision <- sum(logRegpredictedModel == 1 & sessionDF_test == 1) / sum(logRegpredictedModel == 1)
+logRegpredictedModel.cm.precision <- sum(logRegpredictedModel == 1 & sessionDF_test$feedback_type == 1) / sum(logRegpredictedModel == 1)
 
-logRegpredictedModel.cm.recall <- sum(logRegpredictedModel == 1 & sessionDF_test == 1) / sum(sessionDF_test == 1)
+logRegpredictedModel.cm.recall <- sum(logRegpredictedModel == 1 & sessionDF_test$feedback_type == 1) / sum(sessionDF_test$feedback_type == 1)
 
 logRegpredictedModel.cm.f1 <- 2 * logRegpredictedModel.cm.precision * logRegpredictedModel.cm.recall / (logRegpredictedModel.cm.precision + logRegpredictedModel.cm.recall)
 
@@ -372,11 +373,11 @@ predictedFeedbackType.tree2 <- predict(treePredictedModel2, newdata = sessionDF_
 treePredictedModel2.cm <- table(sessionDF_test$feedback_type, predictedFeedbackType.tree2)
 
 treePredictedModel2.cm <- confusionMatrix(treePredictedModel2.cm)
-treePredictedModel2.cm$table
+#treePredictedModel2.cm$table
 
-treePredictedModel2.cm.precision <- sum(predictedFeedbackType.tree2 == 1 & sessionDF_test == 1) / sum(predictedFeedbackType.tree2 == 1)
+treePredictedModel2.cm.precision <- sum(predictedFeedbackType.tree2 == 1 & sessionDF_test$feedback_type == 1) / sum(predictedFeedbackType.tree2 == 1)
 
-treePredictedModel2.cm.recall <- sum(predictedFeedbackType.tree2 == 1 & sessionDF_test == 1) / sum(sessionDF_test == 1)
+treePredictedModel2.cm.recall <- sum(predictedFeedbackType.tree2 == 1 & sessionDF_test$feedback_type == 1) / sum(sessionDF_test$feedback_type == 1)
 
 treePredictedModel2.cm.f1 <- 2 * treePredictedModel2.cm.precision * treePredictedModel2.cm.recall / (treePredictedModel2.cm.precision + treePredictedModel2.cm.recall)
 
@@ -397,11 +398,11 @@ predictedFeedbackType.svm = predict(SVMPredictedModel, newdata = sessionDF_test)
 SVMPredictedModel.cm = table(sessionDF_test$feedback_type, predictedFeedbackType.svm)
 
 SVMPredictedModel.cm <- confusionMatrix(SVMPredictedModel.cm)
-SVMPredictedModel.cm$table
+#SVMPredictedModel.cm$table
 
-SVMPredictedModel.cm.precision <- sum(predictedFeedbackType.svm == 1 & sessionDF_test == 1) / sum(predictedFeedbackType.svm == 1)
+SVMPredictedModel.cm.precision <- sum(predictedFeedbackType.svm == 1 & sessionDF_test$feedback_type == 1) / sum(predictedFeedbackType.svm == 1)
 
-SVMPredictedModel.cm.recall <- sum(predictedFeedbackType.svm == 1 & sessionDF_test == 1) / sum(sessionDF_test == 1)
+SVMPredictedModel.cm.recall <- sum(predictedFeedbackType.svm == 1 & sessionDF_test$feedback_type == 1) / sum(sessionDF_test$feedback_type == 1)
 
 SVMPredictedModel.cm.f1 <- 2 * SVMPredictedModel.cm.precision * SVMPredictedModel.cm.recall / (SVMPredictedModel.cm.precision + SVMPredictedModel.cm.recall)
 
@@ -424,18 +425,157 @@ datatable(modelAccuraciesTable)
 
 ```
 
-The above table displays the different performance metrics associated with each type of predictive regression method. The precision measures the proportion of correctly predicted feedback = 1 out of all instances predicted as feedback = 1. The recall measures the proportion of correctly predicted feedback = 1 out of all actual feedback = 1. The F1-Score combines both the recall and precision metrics to form a balanced measure of both the false positives and false negatives.
+The above table displays the different performance metrics associated with each type of predictive regression method derived from their respective correlation matrix. The precision measures the proportion of correctly predicted feedback = 1 out of all instances predicted as feedback = 1. The recall measures the proportion of correctly predicted feedback = 1 out of all actual feedback = 1. The F1-Score combines both the recall and precision metrics to form a balanced measure of both the false positives and false negatives.
 
-Logistic regression produced the worst accuracy and had the lowest performance overall. This model was only able to correctly predict feedback type about 27.4% of the time and had very low precision, recall, and F1-Score percentages.
+Logistic regression produced the worst accuracy and had the lowest performance overall. This model was only able to correctly predict feedback type about 29% of the time and had very low precision, recall, and F1-Score percentages.
 
 This is the reason why Tree-Based and SVM regression was used, to see if the model could be improved. 
 
-Both SVM and Tree-Based regression performed the same. They had good accuracies of about 73.4%, with high percentages of precision, recall, and F1-Score. These models were able make predictions much better than logistic regression.
+Both SVM and Tree-Based regression performed the same. They had good accuracies of about 71.3%, with high percentages of precision, recall, and F1-Score. These models were able make predictions much better than logistic regression.
 
+
+## Prediction Performance on Test Sets
+
+Following the release of the test data, the training set it just the complete data frame holding all the recorded trials across all 18 sessions, and the test set is the set provided to us.
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+# Load the session test data information
+
+sessionTestData=list()
+for(i in 1:2){
+  sessionTestData[[i]]=readRDS(paste('./Data/test',i,'.rds',sep=''))
+  
+}
+
+testDataFrame <- data.frame()
+
+for (i in 1:2) {
+
+  #Create a custom dataframe here with 4 columns for 4 variables
+  trialDF <- data.frame(matrix(ncol = 5, nrow = 0))
+
+  for (j in 1:length(sessionTestData[[i]]$spks)) { 
+    
+    # Calculate the total number of neurons active
+    neuronCountTable = table(unlist(sessionTestData[[i]]$spks[[j]]))
+    neuronCountValues = as.numeric(neuronCountTable)
+    numActiveNeurons = length(sessionTestData[[i]]$spks[[j]]) - neuronCountValues[1] #neuronCountValues[1] is the # of 0's
+    
+    # Calculate the total number of spks
+    numSpks = 0
+    for(k in 1:length(neuronCountTable)) {
+    
+      numSpks = numSpks + ((k-1) * neuronCountValues[k])
+      
+    }
+    
+    # Calculate the proportion of active neurons
+    activeNeuronProp = numActiveNeurons / length(sessionTestData[[i]]$spks[[i]])
+    
+    # Calculate the firing rate (total number of spks != 0 divided by total)
+    firing_rate = numSpks / (numSpks + neuronCountValues[1])
+    
+    # Calculate the absolute difference between left and right contrast
+    contrastDifference = abs(sessionTestData[[i]]$contrast_left[j] - sessionTestData[[i]]$contrast_right[j])
+    
+    # Append to the variables to the trial data frame
+    trialDF[nrow(trialDF) + 1,] = c(contrastDifference, numActiveNeurons, numSpks, activeNeuronProp, firing_rate)
+    
+  }
+  
+  # Append data together using cbind
+  tempSession = cbind(rep(i,length(sessionTestData[[i]]$contrast_left)),
+                       seq(1, length(sessionTestData[[i]]$spks)),
+                       sessionTestData[[i]]$mouse_name, 
+                       sessionTestData[[i]]$contrast_left,
+                       sessionTestData[[i]]$contrast_right,
+                       length(sessionTestData[[i]]$brain_area),
+                       length(unique(sessionTestData[[i]]$brain_area)),
+                       length(sessionTestData[[i]]$spks),
+                       trialDF,
+                       sessionTestData[[i]]$feedback_type
+                       )
+  
+  # Append each session using rbind
+  if (i == 1){
+    testDataFrame <- tempSession
+  }
+  else {
+    testDataFrame = rbind(testDataFrame, tempSession)
+  }
+  
+  
+}
+
+
+colnames(testDataFrame) = c("session_number", "trial_number", "mouse_name", "contrast_left", "contrast_right", "total_number_of_neurons", "number_of_unique_brain_area", "number_of_trials", "contrast_difference", "number_of_active_neurons", "total_number_of_spks", "proportion_of_active_neurons", "firing_rate", "feedback_type")
+testDataFrame = as.data.frame(testDataFrame)
+testDataFrame$session_number = as.factor(testDataFrame$session_number)
+
+# Perform KMeans clustering
+
+testDataFrame[is.na(testDataFrame)] <- 0
+
+# Clustering data for 3 clusters
+testDataFrame.k3 <- subset(testDataFrame, select = -c(session_number, trial_number, mouse_name, number_of_trials, feedback_type)) %>% kmeans(3)
+clusterIndicatorVector <- testDataFrame.k3$cluster
+
+# Append the cluster indicator to the dataframes for further analysis
+testDataFrame <- cbind(clusterIndicatorVector, testDataFrame)
+colnames(testDataFrame)[1] <- "cluster_id"
+
+#datatable(testDataFrame)
+
+
+# Scale the training and testing data
+sessionDF.traindata <- sessionDF
+sessionDF.traindata[,5:14] <- scale(sessionDF.traindata[,5:14])
+sessionDF.traindata[,1] <- scale(sessionDF.traindata[,1])
+
+testDataFrame[,5:14] <- scale(testDataFrame[,5:14])
+testDataFrame[,1] <- scale(testDataFrame[,1])
+testDataFrame[is.na(testDataFrame)] <- 0
+
+```
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+
+SVMPredictedModel.testdata = svm(formula = as.factor(feedback_type) ~ cluster_id + contrast_left + contrast_right + total_number_of_neurons + number_of_unique_brain_area + contrast_difference + number_of_active_neurons + total_number_of_spks + proportion_of_active_neurons + firing_rate,
+                 data = sessionDF.traindata,
+                 type = 'C-classification',
+                 kernel = 'linear')
+
+# Predicting the Test set results
+predictedFeedbackType.svm.testdata = predict(SVMPredictedModel.testdata, newdata = testDataFrame)
+
+# Making the Confusion Matrix
+SVMPredictedModel.cm.testdata = table(testDataFrame$feedback_type, predictedFeedbackType.svm.testdata)
+
+SVMPredictedModel.cm.testdata <- confusionMatrix(SVMPredictedModel.cm.testdata)
+
+SVMPredictedModel.cm.testdata.precision <- sum(predictedFeedbackType.svm.testdata == 1 & testDataFrame$feedback_type == 1) / sum(predictedFeedbackType.svm.testdata == 1)
+
+SVMPredictedModel.cm.testdata.recall <- sum(predictedFeedbackType.svm.testdata == 1 & testDataFrame$feedback_type == 1) / sum(testDataFrame$feedback_type == 1)
+
+SVMPredictedModel.cm.testdata.f1 <- 2 * SVMPredictedModel.cm.testdata.precision * SVMPredictedModel.cm.testdata.recall / (SVMPredictedModel.cm.testdata.precision + SVMPredictedModel.cm.testdata.recall)
+
+
+testDataPerformance <- data.frame(v1 = c(SVMPredictedModel.cm.testdata$overall['Accuracy'], SVMPredictedModel.cm.testdata.precision, SVMPredictedModel.cm.testdata.recall, SVMPredictedModel.cm.testdata.f1))
+
+testDataPerformance <- data.frame(lapply(testDataPerformance, function(x) if(is.numeric(x)) round(x, 3) else x))
+
+colnames(testDataPerformance) <- c("SVM")
+rownames(testDataPerformance) <- c("Accuracy", "Precision", "Recall", "F1-Score")
+
+datatable(testDataPerformance)
+
+```
+
+The above table holds the performance metrics associated with the Support Vector Machine Predictive Regression Method. SVM or Tree-Based method could have been used since they performed better than the Logistic method. This predictive model was able to accurately predict the feedback type correctly 72.5% of the time, performing almost the same as how it did when the training and testing data were split using the 80/20 method. This is a realistic predictive model.
 
 ## Conclusion/Discussion
 
-The primary objective was to build a model that can predict the feedback type of a mouse, at each trial, using the neural activity data and contrasts. This was able to be done after using clustering and classification techniques. A logistic regression predictive model was not able to accurately predict the feedback type given the variables that were provided and derived from the data. This led to the usage of a Support Vector Machine and Tree-Based predictive model, which performed very similarly to each other, and was able to predict the feedback type correctly about 73.4% of the time. These two models were the best at classification in the scope of this project and mice neural activities. 
+The primary objective was to build a model that can predict the feedback type of a mouse, at each trial, using the neural activity data and contrasts. This was able to be done after using clustering and classification techniques. A logistic regression predictive model was not able to accurately predict the feedback type given the variables that were provided and derived from the data. This led to the usage of a Support Vector Machine and Tree-Based predictive model, which performed very similarly to each other, and was able to predict the feedback type correctly about 71.3% of the time. These two models were the best at classification in the scope of this project and mice neural activities. When predicting using the provided test data, the SVM model was able to correctl predict the feedback type 72.5% of th time.
 
 Some drawbacks and disadvantages of these predictive models were the variables that were used. While these variables were able to capture information specific to the trial's neural activity, they were not able to bring information about the specific brain areas that were being activated. Certain brain areas are responsible for a mouse triggering actions, or making decisions. If one could completely understand which brain areas are responsible for which thoughts, deriving variables around brain area firing rates could possibly provide a more accurate prediction model.
 
